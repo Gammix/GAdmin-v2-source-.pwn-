@@ -6113,9 +6113,7 @@ CMD:admins(playerid, params[])
 	        if(GetPVarType(playerid, "GAdmin_Onduty") != PLAYER_VARTYPE_NONE) status = "On Duty";
 	        else status = "Playing";
 
-			if(! strcmp(ReturnPlayerName(i), "Gammix")) rank = "Server Owner & Developer";
-			else if(! strcmp(ReturnPlayerName(i), "Mitchell Weston")) rank = "Server Owner";
-			else if(IsPlayerAdmin(i)) rank = "RCON Admin";
+			if(IsPlayerAdmin(i)) rank = "RCON Admin";
 			else
 			{
 			    switch(GetPlayerGAdminLevel(i))
