@@ -9,7 +9,7 @@
      \ \___| || | | || |_||| |     | || || |  | |   \ \/ / / /_
 	  \______||_| |_|\____||_|     |_||_||_|  |_|    \__/ \____|
 
-	GAdmin System (gadmin.pwn)
+	GAdmin System (gadmin.pwn) - Version 2.3
 	* Using easydb include, fast, easy and efficient SQLITE database for the admin system.
 	* Support timeban/tempban, permanent ban and now range bans as well.
 	* Over 100+ admin and player commands, watch the list in one dialog by typing /acmds in chat.
@@ -66,6 +66,7 @@
 #define FORCE_LOGIN 					//comment this if you don't want login compulsory
 
 #define READ_COMMANDS       			//comment this if you don't want admin notification whenever a player types a cmd
+#define READ_AKA                        //comment this if you don't want admin notification about player AKA info. whenever a player connects
 
 #define REPORT_TEXTDRAW     			//comment this if you don't want a report textdraw for admin's notifications
 #define MAX_REPORTLOG_LINES     		5 //maximum latest reports the dialog can store (/reports)
@@ -410,7 +411,6 @@ public OnFilterScriptInit()
 		DB::VerifyColumn(gGlobal[s_usertable], "autologin", DB::TYPE_NUMBER, 0);
 	}
 	printf("[GAdminv3] - NOTICE: Total %i accounts loaded from the table ''%s''", DB::CountRows(gGlobal[s_usertable]), TABLE_USERS);
- 	printf("%i", DB::GetHighestRegisteredKey(gGlobal[s_usertable]));
 
 	gGlobal[s_rangebantable] = DB::VerifyTable(TABLE_RANGE_BANS, "ID");
 	if(gGlobal[s_bantable] == DB_INVALID_TABLE)
@@ -706,11 +706,11 @@ GetPlayerGVipLevel(playerid)
 
 //------------------------------------------------
 
-SendClientMessageForAdmins(color, message[])
+SendClientMessageForAdmins(color, message[], level = 1)
 {
 	LOOP_PLAYERS(i)
 	{
-	    if(IsPlayerGAdmin(i))
+	    if(GetPlayerGAdminLevel(i) >= level)
 	    {
 	        SendClientMessage(i, color, message);
 	    }
@@ -889,14 +889,12 @@ HighestTopList(const playerid, const Value, Player_ID[], Top_Score[], Loop) //Cr
 
 //------------------------------------------------
 
-#if ! defined isnumeric
-	isnumeric(str[])
-	{
-		new ch, i;
-		while ((ch = str[i++])) if (!('0' <= ch <= '9')) return false;
-		return true;
-	}
-#endif
+IsNumericString(str[])
+{
+	new ch, i;
+	while ((ch = str[i++])) if (!('0' <= ch <= '9')) return false;
+	return true;
+}
 
 ReturnPlayerName(playerid)
 {
@@ -1134,6 +1132,36 @@ public OnPlayerTimeUpdate(playerid)
 
 //------------------------------------------------
 
+GetPlayerAKA(playerid, str[][], l = sizeof(str))
+{
+	new akaCount, uIP[18], pIP[18];
+	format(pIP, sizeof(pIP), ReturnPlayerIP(playerid));
+
+	for(new i = 0; i < l; i++)
+	{
+ 		str[i][0] = EOS;
+	}
+
+	for(new i = 1, j = DB::GetHighestRegisteredKey(gGlobal[s_usertable]); i <= j; i++)
+	{
+	  	DB::GetStringEntry(gGlobal[s_usertable], i, "ip", uIP);
+    	if(ipmatch(uIP, pIP))
+	    {
+	        if(akaCount >= l)
+			{
+				return akaCount;
+			}
+
+	        DB::GetStringEntry(gGlobal[s_usertable], i, "username", str[akaCount], l);
+	        akaCount += 1;
+     	}
+	}
+
+	return akaCount;
+}
+
+//------------------------------------------------
+
 public OnPlayerConnect(playerid)
 {
 	gUser[playerid][u_admin] = 0;
@@ -1187,7 +1215,7 @@ public OnPlayerConnect(playerid)
 		PlayerTextDrawSetSelectable(playerid,gUser[playerid][u_spectxt], 0);
 	#endif
 
-	new string[144];
+	new string[150];
 
     for(new i = 0; i < gGlobal[s_fnamescount]; i++)
     {
@@ -1220,6 +1248,30 @@ public OnPlayerConnect(playerid)
 
 	format(string, sizeof(string), "* %s[%i] have joined the server!", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_GREY, string);
+	
+	#if defined READ_AKA
+        format(string, sizeof(string), "");
+
+		new aka[15][MAX_PLAYER_NAME];
+		if(GetPlayerAKA(playerid, aka))
+		{
+			strcat(string, "** AKA: ");
+			for(new i = 0, j = sizeof(aka); i < j; i++)
+			{
+			    if(aka[i][0])
+			    {
+			        if((strlen(string) + strlen(aka[i])) > 135)
+			        {
+						strcat(string, "more... [/aka]");
+						break;
+					}
+					strcat(string, aka[i]);
+					strcat(string, ", ");
+				}
+			}
+			SendClientMessageForAdmins(COLOR_GREY, string);
+		}
+	#endif
 	return 1;
 }
 
@@ -3160,6 +3212,39 @@ public OnPlayerText(playerid, text[])
 		return 0;
 	}
 
+	if(GetPlayerGAdminLevel(playerid) >= 1)
+	{
+		if(text[0] == '!')
+		{
+			new string[144];
+			format(string, sizeof(string), "[Admin chat] %s[%i]: %s", ReturnPlayerName(playerid), playerid, text[1]);
+			SendClientMessageForAdmins(COLOR_PINK, string);
+		    return 0;
+		}
+	}
+
+	if(GetPlayerGAdminLevel(playerid) >= 4)
+	{
+		if(text[0] == '@')
+		{
+			new string[144];
+			format(string, sizeof(string), "[Adminlevel 4 chat] %s[%i]: %s", ReturnPlayerName(playerid), playerid, text[1]);
+			SendClientMessageForAdmins(COLOR_PINK, string, 4);
+		    return 0;
+		}
+	}
+
+	if(GetPlayerGAdminLevel(playerid) >= 5)
+	{
+		if(text[0] == '#')
+		{
+			new string[144];
+			format(string, sizeof(string), "[Adminlevel 5 chat] %s[%i]: %s", ReturnPlayerName(playerid), playerid, text[1]);
+			SendClientMessageForAdmins(COLOR_PINK, string, 5);
+		    return 0;
+		}
+	}
+	
 	//admin chat interface
 	if(GetPVarType(playerid, "GAdmin_Onduty") != PLAYER_VARTYPE_NONE)
 	{
@@ -3170,7 +3255,7 @@ public OnPlayerText(playerid, text[])
 	}
 
 	//anti flooding
-    if((GetTickCount() - gUser[playerid][u_chattime]) < 2000)
+    if((GetTickCount() - gUser[playerid][u_chattime]) < 1000)
 	{
 	    SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Please don't flood in the chat.");
 	    return 0;
@@ -3260,14 +3345,15 @@ CMD:acmds(playerid, params[])
 	{
 		strcat(DIALOG, ""HOT_PINK"ADMIN LEVEL 1:\n");
   		strcat(DIALOG, ""SAMP_BLUE"/acmds, /weaps, /onduty, /reports, /repair, /addnos, /warn, /rewarn, /spec, /specoff,\n");
-  		strcat(DIALOG, ""SAMP_BLUE"/flip, /ip, /goto, /setweather, /settime, /ann, /kick, /asay, /spawn\n\n");
+  		strcat(DIALOG, ""SAMP_BLUE"/flip, /ip, /goto, /setweather, /settime, /ann, /kick, /asay, /spawn\n");
+  		strcat(DIALOG, ""SAMP_BLUE"Use '!' specifier in chat console at first place for admin chat [example: !hello admins]\n\n");
 	}
 	if(GetPlayerGAdminLevel(playerid) >= 2 || IsPlayerAdmin(playerid))
 	{
 		strcat(DIALOG, ""HOT_PINK"ADMIN LEVEL 2:\n");
   		strcat(DIALOG, ""SAMP_BLUE"/jetpack, /aweaps, /show, /muted, /jailed, /carhealth, /eject, /carpaint,\n");
   		strcat(DIALOG, ""SAMP_BLUE"/carcolor, /givecar, /car, /akill, /jail, /unjail, /mute, /unmute, /setskin,\n");
-  		strcat(DIALOG, ""SAMP_BLUE"/cc, /heal, /armour, /setinterior, /setworld, /explode, /disarm, /tune\n");
+  		strcat(DIALOG, ""SAMP_BLUE"/cc, /heal, /armour, /setinterior, /setworld, /explode, /disarm, /tune, /aka\n");
   		strcat(DIALOG, ""SAMP_BLUE"/ban, /oban, /searchban, /searchipban, /searchrangeban, /unban, /atele, /ann2\n\n");
 	}
 	if(GetPlayerGAdminLevel(playerid) >= 3 || IsPlayerAdmin(playerid))
@@ -3282,13 +3368,15 @@ CMD:acmds(playerid, params[])
 		strcat(DIALOG, ""HOT_PINK"ADMIN LEVEL 4:\n");
 		strcat(DIALOG, ""SAMP_BLUE"/fakedeath, /cmdmuted, /cmdmute, /uncmdmute, /killall, /ejectall, /disarmall, /muteall, /unmuteall,\n");
 		strcat(DIALOG, "/giveallscore, /giveallcash, /setalltime, /setallweather, /respawncars, /clearwindow, /giveallweapon,\n");
-		strcat(DIALOG, "/object, /destroyobject, /editobject, /banrange, /unbanrange\n\n");
+		strcat(DIALOG, "/object, /destroyobject, /editobject, /banrange, /unbanrange\n");
+  		strcat(DIALOG, ""SAMP_BLUE"Use '@' specifier in chat console at first place for admin chat [example: !hello lvl 4+ admins]\n\n");
 	}
 	if(GetPlayerGAdminLevel(playerid) >= 5 || IsPlayerAdmin(playerid))
 	{
 		strcat(DIALOG, ""HOT_PINK"ADMIN LEVEL 5+:\n");
 		strcat(DIALOG, ""SAMP_BLUE"/gmx, /removeuser, /fakecmd, /fakechat, /setlevel, /setvip, /forbidname, /forbidtag, /forbidword,\n");
-		strcat(DIALOG, ""SAMP_BLUE"/pickup, /destroypickup, /reloaddb");
+		strcat(DIALOG, ""SAMP_BLUE"/pickup, /destroypickup, /reloaddb\n");
+  		strcat(DIALOG, ""SAMP_BLUE"Use '#' specifier in chat console at first place for admin chat [example: !hello lvl 5+ admins]\n\n");
 	}
 
 	ShowPlayerDialog(playerid, DIALOG_COMMON, DIALOG_STYLE_MSGBOX, "Administrative help/commands list:", DIALOG, "Close", "");
@@ -3853,6 +3941,31 @@ CMD:jetpack(playerid, params[])
 	return 1;
 }
 
+CMD:aka(playerid, params[])
+{
+	//check if the player is a admin
+	LevelCheck(playerid, 2);
+
+	new target;
+	if(sscanf(params, "u", target)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /aka [player]");
+	
+	new aka[15][MAX_PLAYER_NAME];
+	if(! GetPlayerAKA(playerid, aka)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The player has no mulitple accounts.");
+	
+	new string[150];
+	format(string, sizeof(string), "Search result for %s's AKA: [ip: %s]", ReturnPlayerName(target), ReturnPlayerIP(target));
+	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
+	for(new i = 0, j = sizeof(aka); i < j; i++)
+	{
+	    if(aka[i][0])
+	    {
+			format(string, sizeof(string), "%i. %s", i, aka[i]);
+			SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
+		}
+	}
+	return 1;
+}
+
 CMD:aweaps(playerid, params[])
 {
 	//check if the player is a admin
@@ -4083,7 +4196,7 @@ CMD:givecar(playerid, params[])
 
 	if(GetPlayerGAdminLevel(playerid) < GetPlayerGAdminLevel(target)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin.");
 
-	if(isnumeric(vehicle)) 	model = strval(vehicle);
+	if(IsNumericString(vehicle)) 	model = strval(vehicle);
     else 					model = GetVehicleModelIDFromName(vehicle);
 
 	if(model < 400 || model > 611) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid vehicle model id, must be b/w 400-611.");
@@ -4122,7 +4235,7 @@ CMD:car(playerid, params[])
     new vehicle[32], model, color[2];
 	if(sscanf(params, "s[32]I(-1)I(-1)", vehicle, color[0], color[1])) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /car [vehicle] [*color1] [*color2]");
 
-	if(isnumeric(vehicle)) 	model = strval(vehicle);
+	if(IsNumericString(vehicle)) 	model = strval(vehicle);
     else 					model = GetVehicleModelIDFromName(vehicle);
 
 	if(model < 400 || model > 611) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid vehicle model id, must be b/w 400-611.");
@@ -5202,7 +5315,7 @@ CMD:giveweapon(playerid, params[])
 	if(GetPlayerGAdminLevel(playerid) < GetPlayerGAdminLevel(target)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin.");
 
 	new weaponid;
-	if(! isnumeric(weapon)) weaponid = GetWeaponIDFromName(weapon);
+	if(! IsNumericString(weapon)) weaponid = GetWeaponIDFromName(weapon);
 	else 					weaponid = strval(weapon);
 
 	if(! IsValidWeapon(weaponid)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid weapon id.");
@@ -6119,7 +6232,7 @@ CMD:giveallweapon(playerid, params[])
 	if(sscanf(params, "s[32]I(250)", weapon, ammo)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /giveallweapon [weapon] [ammo]");
 
 	new weaponid;
-	if(! isnumeric(weapon)) weaponid = GetWeaponIDFromName(weapon);
+	if(! IsNumericString(weapon)) weaponid = GetWeaponIDFromName(weapon);
 	else				 	weaponid = strval(weapon);
 
 	if(! IsValidWeapon(weaponid)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid weapon id.");
@@ -6552,7 +6665,7 @@ CMD:forbidname(playerid, params[])
 
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
-	format(string, sizeof(string), "* You have added ''%s'' to forbidden names list.", name);
+	format(string, sizeof(string), "* You have added ''%s'' to forbidden names list. (use /reloaddb to save all forbidden lists)", name);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
     return 1;
 }
@@ -6608,7 +6721,7 @@ CMD:forbidtag(playerid, params[])
 
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
-	format(string, sizeof(string), "* You have added ''%s'' to forbidden names list.", tag);
+	format(string, sizeof(string), "* You have added ''%s'' to forbidden names list. (use /reloaddb to save all forbidden lists)", tag);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
     return 1;
 }
@@ -6639,7 +6752,7 @@ CMD:forbidword(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* You have added ''%s'' to forbidden words list.", word);
+	format(string, sizeof(string), "* You have added ''%s'' to forbidden words list. (use /reloaddb to save all forbidden lists)", word);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
     return 1;
 }
@@ -7067,7 +7180,7 @@ CMD:pm(playerid, params[])
 
 	if(!IsPlayerConnected(target)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified player is not connected.");
 
-	if(target == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
+	//if(target == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
 
 	format(string, sizeof(string), "ERROR: %s[%d] is not accepting private messages at the moment.", ReturnPlayerName(target), target);
 	if(GetPVarType(playerid, "GAdmin_Nopm") != PLAYER_VARTYPE_NONE) return SendClientMessage(playerid, COLOR_FIREBRICK, string);
@@ -7082,21 +7195,21 @@ CMD:pm(playerid, params[])
 
 CMD:reply(playerid, params[])
 {
-	new target, text[128], string[145];
-	if(sscanf(params, "s[128]", target, text)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /reply (message)");
+	new text[128];
+	if(sscanf(params, "s[128]", text)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /reply (message)");
 
-	target = gUser[playerid][u_lastuser];
-	if(!IsPlayerConnected(target)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified player is not connected.");
+	if(!IsPlayerConnected(gUser[playerid][u_lastuser])) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified player is not connected.");
 
-	if(target == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
+	//if(gUser[playerid][u_lastuser] == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
 
-	format(string, sizeof(string), "ERROR: %s[%d] is not accepting private messages at the moment.", ReturnPlayerName(target), target);
+	new string[145];
+	format(string, sizeof(string), "ERROR: %s[%d] is not accepting private messages at the moment.", ReturnPlayerName(gUser[playerid][u_lastuser]), gUser[playerid][u_lastuser]);
 	if(GetPVarType(playerid, "GAdmin_Nopm") != PLAYER_VARTYPE_NONE) return SendClientMessage(playerid, COLOR_FIREBRICK, string);
 
-	format(string, sizeof(string), "PM to %s[%i]: %s", ReturnPlayerName(target), target, text);
+	format(string, sizeof(string), "PM to %s[%i]: %s", ReturnPlayerName(gUser[playerid][u_lastuser]), gUser[playerid][u_lastuser], text);
 	SendClientMessage(playerid, COLOR_YELLOW, string);
 	format(string, sizeof(string), "PM from %s[%i]: %s", ReturnPlayerName(playerid), playerid, text);
-	SendClientMessage(target, COLOR_YELLOW, string);
+	SendClientMessage(gUser[playerid][u_lastuser], COLOR_YELLOW, string);
 	return 1;
 }
 
