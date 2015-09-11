@@ -525,6 +525,11 @@ public OnFilterScriptInit()
 	{
 	    format(gReportlog[i], 145, "");
 	}
+	
+	for(new i; i < GetMaxPlayers(); i++)
+	{
+	    OnPlayerConnect(i);
+	}
 
 	print(" ");
 	print("Gammix's Administration Filterscript (c) 2015 | "LOCATION_DATABASE" | Initialization complete...");
@@ -537,6 +542,11 @@ public OnFilterScriptInit()
 
 public OnFilterScriptExit()
 {
+	for(new i; i < GetMaxPlayers(); i++)
+	{
+	    OnPlayerDisconnect(i, 0);
+	}
+	
 	DB::Close();
 
 	//destroy server lock
@@ -1248,7 +1258,7 @@ public OnPlayerConnect(playerid)
 
 	format(string, sizeof(string), "* %s[%i] have joined the server!", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_GREY, string);
-	
+
 	#if defined READ_AKA
         format(string, sizeof(string), "");
 
@@ -3244,7 +3254,7 @@ public OnPlayerText(playerid, text[])
 		    return 0;
 		}
 	}
-	
+
 	//admin chat interface
 	if(GetPVarType(playerid, "GAdmin_Onduty") != PLAYER_VARTYPE_NONE)
 	{
@@ -3948,10 +3958,10 @@ CMD:aka(playerid, params[])
 
 	new target;
 	if(sscanf(params, "u", target)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /aka [player]");
-	
+
 	new aka[15][MAX_PLAYER_NAME];
 	if(! GetPlayerAKA(playerid, aka)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The player has no mulitple accounts.");
-	
+
 	new string[150];
 	format(string, sizeof(string), "Search result for %s's AKA: [ip: %s]", ReturnPlayerName(target), ReturnPlayerIP(target));
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -7180,7 +7190,7 @@ CMD:pm(playerid, params[])
 
 	if(!IsPlayerConnected(target)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified player is not connected.");
 
-	//if(target == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
+	if(target == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
 
 	format(string, sizeof(string), "ERROR: %s[%d] is not accepting private messages at the moment.", ReturnPlayerName(target), target);
 	if(GetPVarType(playerid, "GAdmin_Nopm") != PLAYER_VARTYPE_NONE) return SendClientMessage(playerid, COLOR_FIREBRICK, string);
@@ -7200,7 +7210,7 @@ CMD:reply(playerid, params[])
 
 	if(!IsPlayerConnected(gUser[playerid][u_lastuser])) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified player is not connected.");
 
-	//if(gUser[playerid][u_lastuser] == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
+	if(gUser[playerid][u_lastuser] == playerid) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot PM yourself.");
 
 	new string[145];
 	format(string, sizeof(string), "ERROR: %s[%d] is not accepting private messages at the moment.", ReturnPlayerName(gUser[playerid][u_lastuser]), gUser[playerid][u_lastuser]);
