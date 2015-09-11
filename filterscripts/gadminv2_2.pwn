@@ -1907,7 +1907,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 			format(string, sizeof(string), "You have set %s[%i]'s color to %s.", ReturnPlayerName(GetPVarInt(playerid, "PlayerColor")), GetPVarInt(playerid, "PlayerColor"), colorname);
 			SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
 
-			format(string, sizeof(string), "Admin %s[%i] have set your color to %s.", ReturnPlayerName(playerid), playerid, colorname);
+			format(string, sizeof(string), "admin %s[%i] has set your color to %s.", ReturnPlayerName(playerid), playerid, colorname);
 			SendClientMessage(GetPVarInt(playerid, "PlayerColor"), COLOR_DODGER_BLUE, string);
 
 			DeletePVar(playerid, "PlayerColor");
@@ -3560,7 +3560,7 @@ CMD:warn(playerid, params[])
 	if(GetPlayerGAdminLevel(playerid) < GetPlayerGAdminLevel(target)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin.");
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have warned %s[%i] [Reason: %s] (warnings: %i)", ReturnPlayerName(playerid), playerid, ReturnPlayerName(target), target, reason, gUser[target][u_warnings]);
+	format(string, sizeof(string), "admin %s[%i] has warned %s[%i] [Reason: %s] (warnings: %i)", ReturnPlayerName(playerid), playerid, ReturnPlayerName(target), target, reason, gUser[target][u_warnings]);
 	SendClientMessageToAll(COLOR_YELLOW, string);
 
 	gUser[target][u_warnings] += 1;
@@ -3592,7 +3592,7 @@ CMD:rewarn(playerid, params[])
 	gUser[target][u_warnings] = 0;
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have remove your warning counts (warnings: %i)", ReturnPlayerName(playerid), playerid, gUser[target][u_warnings]);
+	format(string, sizeof(string), "admin %s[%i] has remove your warning counts (warnings: %i)", ReturnPlayerName(playerid), playerid, gUser[target][u_warnings]);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have removed %s[%i]'s warning counts (warnings: %i)", ReturnPlayerName(target), target, gUser[target][u_warnings]);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -3624,7 +3624,7 @@ CMD:flip(playerid, params[])
 		new string[144];
 		format(string, sizeof(string), "You have fliped %s[%i]'s vehicle.", ReturnPlayerName(target), target);
 		SendClientMessage(target, COLOR_DODGER_BLUE, string);
-		format(string, sizeof(string), "Admin %s[%i] have flipped your vehicle.", ReturnPlayerName(playerid), playerid);
+		format(string, sizeof(string), "admin %s[%i] has flipped your vehicle.", ReturnPlayerName(playerid), playerid);
 		SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
     }
     else
@@ -3679,7 +3679,7 @@ CMD:spawn(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have re-spawned you.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has re-spawned you.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have respawned %s[%i].", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -3737,7 +3737,7 @@ CMD:setweather(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have changed your weather to %i.", ReturnPlayerName(playerid), playerid, id);
+	format(string, sizeof(string), "admin %s[%i] has changed your weather to %i.", ReturnPlayerName(playerid), playerid, id);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have cahnged %s[%i]'s weather to %i.", ReturnPlayerName(target), target, id);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -3763,7 +3763,7 @@ CMD:settime(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have changed your time to %i.", ReturnPlayerName(playerid), playerid, id);
+	format(string, sizeof(string), "admin %s[%i] has changed your time to %i.", ReturnPlayerName(playerid), playerid, id);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have cahnged %s[%i]'s time to %i.", ReturnPlayerName(target), target, id);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -3846,7 +3846,7 @@ CMD:jetpack(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have given you a jetpack.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has given you a jetpack.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have given %s[%i] a jetpack.", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -3891,7 +3891,7 @@ CMD:show(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have sent you a screen message.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has sent you a screen message.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have sent %s[%i] a scren message.", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -3978,7 +3978,7 @@ CMD:carhealth(playerid, params[])
 	PlayerPlaySound(playerid, 1133, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your car's health to %0.2f.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has set your car's health to %0.2f.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s car health to %.2f.", ReturnPlayerName(target), target, VehicleNames[GetVehicleModel(GetPlayerVehicleID(target)) - 400], amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4006,7 +4006,7 @@ CMD:eject(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have ejected you from your vehicle.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has ejected you from your vehicle.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have ejected %s[%i] from his vehicle.", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4035,7 +4035,7 @@ CMD:carpaint(playerid, params[])
 	PlayerPlaySound(playerid, 1133, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your vehicle's paintjob id to %i.", ReturnPlayerName(playerid), playerid, paint);
+	format(string, sizeof(string), "admin %s[%i] has set your vehicle's paintjob id to %i.", ReturnPlayerName(playerid), playerid, paint);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s vehicle's paintjob id to %i.", ReturnPlayerName(target), target, paint);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4064,7 +4064,7 @@ CMD:carcolor(playerid, params[])
 	ChangeVehicleColor(GetPlayerVehicleID(target), color[0], color[1]);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your vehicle's color to %i & %i.", ReturnPlayerName(playerid), playerid, color[0], color[1]);
+	format(string, sizeof(string), "admin %s[%i] has set your vehicle's color to %i & %i.", ReturnPlayerName(playerid), playerid, color[0], color[1]);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s vehicle's paintjob to %i & %i.", ReturnPlayerName(target), target, color[0], color[1]);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4107,7 +4107,7 @@ CMD:givecar(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have given you vehicle %s[model: %i], colors: %i & %i.", ReturnPlayerName(playerid), playerid, VehicleNames[model - 400], model, color[0], color[1]);
+	format(string, sizeof(string), "admin %s[%i] has given you vehicle %s[model: %i], colors: %i & %i.", ReturnPlayerName(playerid), playerid, VehicleNames[model - 400], model, color[0], color[1]);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have given %s[%i] vehicle %s[model: %i], colors: %i & %i.", ReturnPlayerName(target), target, VehicleNames[model - 400], model, color[0], color[1]);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4336,7 +4336,7 @@ CMD:cc(playerid, params[])
 	for(new i; i < 250; i++) SendClientMessageToAll(-1, " ") && PlayerPlaySound(i, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have cleared all chat.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has cleared all chat.", ReturnPlayerName(playerid), playerid);
     SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -4357,7 +4357,7 @@ CMD:heal(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have healed you.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has healed you.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have healed %s[%i].", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4380,7 +4380,7 @@ CMD:armour(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have armoured you.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has armoured you.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have armoured %s[%i].", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4475,7 +4475,7 @@ CMD:disarm(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have disarmed you.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has disarmed you.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have disarmed %s[%i].", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4861,7 +4861,7 @@ CMD:get(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have teleported you to his/her position.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has teleported you to his/her position.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have teleport %s[%i] to your position.", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4924,7 +4924,7 @@ CMD:force(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have forced you to class selection.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has forced you to class selection.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have forced %s[%i] to class selection.", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -4939,7 +4939,7 @@ CMD:healall(playerid, params[])
 	LOOP_PLAYERS(i) SetPlayerHealth(i, 100.0) && PlayerPlaySound(i, 1057, 0.0, 0.0, 0.0);
 
     new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have healed all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has healed all players.", ReturnPlayerName(playerid), playerid);
     SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -4952,7 +4952,7 @@ CMD:armourall(playerid, params[])
 	LOOP_PLAYERS(i) SetPlayerArmour(i, 100.0) && PlayerPlaySound(i, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have armoured all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has armoured all players.", ReturnPlayerName(playerid), playerid);
     SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5014,7 +5014,7 @@ CMD:fightstyle(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your fighting style to [%i]%s.", ReturnPlayerName(playerid), playerid, sylename, style);
+	format(string, sizeof(string), "admin %s[%i] has set your fighting style to [%i]%s.", ReturnPlayerName(playerid), playerid, sylename, style);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s fighting style to [%i]%s.", ReturnPlayerName(target), target, sylename, style);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5038,7 +5038,7 @@ CMD:sethealth(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your health to %0.2f.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has set your health to %0.2f.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s health to %.2f.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5062,7 +5062,7 @@ CMD:setarmour(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your armour to %0.2f.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has set your armour to %0.2f.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s armour to %.2f.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5109,7 +5109,7 @@ CMD:resetcash(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have reset your cash to 0$.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has reset your cash to 0$.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have reset %s[%i]'s cash to 0$.", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5136,7 +5136,7 @@ CMD:getall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have teleported all players to hist location.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has teleported all players to hist location.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5158,7 +5158,7 @@ CMD:freeze(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have freezed you.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has freezed you.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have freezed %s[%i].", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5182,7 +5182,7 @@ CMD:unfreeze(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have unfreezed you.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has unfreezed you.", ReturnPlayerName(playerid), playerid);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have unfreezed %s[%i].", ReturnPlayerName(target), target);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5213,7 +5213,7 @@ CMD:giveweapon(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have given you a %s[id: %i] with %i ammo.", ReturnPlayerName(playerid), playerid, weapon, weaponid, ammo);
+	format(string, sizeof(string), "admin %s[%i] has given you a %s[id: %i] with %i ammo.", ReturnPlayerName(playerid), playerid, weapon, weaponid, ammo);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have given %s[%i] a %s[id: %i] with %i ammo.", ReturnPlayerName(target), target, weapon, weaponid, ammo);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5282,7 +5282,7 @@ CMD:setcash(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your money to $%i.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has set your money to $%i.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s money to $%i.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5306,7 +5306,7 @@ CMD:setscore(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your score to %i.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has set your score to %i.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s score to %i.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5328,7 +5328,7 @@ CMD:givecash(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have given you money $%i.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has given you money $%i.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have given %s[%i]'s money $%i.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5350,7 +5350,7 @@ CMD:givescore(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have given you score to %i.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has given you score to %i.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have given %s[%i]'s score %i.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5412,7 +5412,7 @@ CMD:setkills(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your kills to %i.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has set your kills to %i.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s kills to %i.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5439,7 +5439,7 @@ CMD:setdeaths(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have set your deaths to %i.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "admin %s[%i] has set your deaths to %i.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessage(target, COLOR_DODGER_BLUE, string);
 	format(string, sizeof(string), "You have set %s[%i]'s deaths to %i.", ReturnPlayerName(target), target, amount);
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
@@ -5523,13 +5523,13 @@ CMD:banip(playerid, params[])
 	        if(days == 0)
 			{
 			    new string[144];
-			    format(string, sizeof(string), "* Admin %s[%i] have banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+			    format(string, sizeof(string), "* admin %s[%i] has banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
 				SendClientMessage(i, COLOR_RED, string);
 			}
 			else
 			{
 			    new string[144];
-			    format(string, sizeof(string), "* Admin %s[%i] have temp banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+			    format(string, sizeof(string), "* admin %s[%i] has temp banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
 				SendClientMessage(i, COLOR_RED, string);
 			    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime(time));
 				SendClientMessage(i, COLOR_RED, string);
@@ -5579,7 +5579,7 @@ CMD:freezeall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have freezed all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has freezed all players.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5603,7 +5603,7 @@ CMD:unfreezeall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have unfreezed all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has unfreezed all players.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5694,13 +5694,13 @@ CMD:banrange(playerid, params[])
 	        if(days == 0)
 			{
 			    new string[144];
-			    format(string, sizeof(string), "* Admin %s[%i] have range banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+			    format(string, sizeof(string), "* admin %s[%i] has range banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
 				SendClientMessage(i, COLOR_RED, string);
 			}
 			else
 			{
 			    new string[144];
-			    format(string, sizeof(string), "* Admin %s[%i] have temp range banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+			    format(string, sizeof(string), "* admin %s[%i] has temp range banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
 				SendClientMessage(i, COLOR_RED, string);
 			    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime( time - gettime() ));
 				SendClientMessage(i, COLOR_RED, string);
@@ -5869,7 +5869,7 @@ CMD:muteall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have muted all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has muted all players.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5895,7 +5895,7 @@ CMD:unmuteall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have unmuted all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has unmuted all players.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5919,7 +5919,7 @@ CMD:killall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
     new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have killed all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has killed all players.", ReturnPlayerName(playerid), playerid);
     SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5948,7 +5948,7 @@ CMD:ejectall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have ejected all players from their vehicles.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has ejected all players from their vehicles.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5972,7 +5972,7 @@ CMD:disarmall(playerid, params[])
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have disarmed all players.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has disarmed all players.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -5993,7 +5993,7 @@ CMD:giveallscore(playerid, params[])
 	}
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have given all players %i score.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "* admin %s[%i] has given all players %i score.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -6014,7 +6014,7 @@ CMD:giveallcash(playerid, params[])
 	}
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have given all players $%i.", ReturnPlayerName(playerid), playerid, amount);
+	format(string, sizeof(string), "* admin %s[%i] has given all players $%i.", ReturnPlayerName(playerid), playerid, amount);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -6037,7 +6037,7 @@ CMD:setalltime(playerid, params[])
 	}
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have set all players time to %i.", ReturnPlayerName(playerid), playerid, id);
+	format(string, sizeof(string), "* admin %s[%i] has set all players time to %i.", ReturnPlayerName(playerid), playerid, id);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -6060,7 +6060,7 @@ CMD:setallweather(playerid, params[])
 	}
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have set all players weather to %i.", ReturnPlayerName(playerid), playerid, id);
+	format(string, sizeof(string), "* admin %s[%i] has set all players weather to %i.", ReturnPlayerName(playerid), playerid, id);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -6105,7 +6105,7 @@ CMD:cleardwindow(playerid, params[])
 	for(new i = 0; i < 20; i++) SendDeathMessage(6000, 5005, 255);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have cleared all players death window.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "* admin %s[%i] has cleared all players death window.", ReturnPlayerName(playerid), playerid);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -6128,7 +6128,7 @@ CMD:giveallweapon(playerid, params[])
    	LOOP_PLAYERS(i) GivePlayerWeapon(i, weaponid, ammo) && PlayerPlaySound(i, 1057, 0.0, 0.0, 0.0);
 
 	new string[144];
-	format(string, sizeof(string), "* Admin %s[%i] have given all players %s[id: %i] with %i ammo.", ReturnPlayerName(playerid), playerid, weapon, weaponid, ammo);
+	format(string, sizeof(string), "* admin %s[%i] has given all players %s[id: %i] with %i ammo.", ReturnPlayerName(playerid), playerid, weapon, weaponid, ammo);
 	SendClientMessageToAll(COLOR_DODGER_BLUE, string);
 	return 1;
 }
@@ -6258,7 +6258,7 @@ CMD:removeuser(playerid, params[])
 	    if(! strcmp(name, ReturnPlayerName(i), true))
 	    {
 	        new string[144];
-	        format(string, sizeof(string), "* Admin %s[%i] have deleted your account.", ReturnPlayerName(playerid), playerid);
+	        format(string, sizeof(string), "* admin %s[%i] has deleted your account.", ReturnPlayerName(playerid), playerid);
          	SendClientMessage(i, COLOR_RED, string);
 			DelayKick(i);
 			break;
@@ -6464,7 +6464,7 @@ CMD:lock(playerid, params[])
     SendClientMessage(playerid, COLOR_RED, " ");
     SendClientMessage(playerid, COLOR_RED, "- Server Locked -");
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have locked the server.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has locked the server.", ReturnPlayerName(playerid), playerid);
  	SendClientMessage(playerid, COLOR_RED, string);
 	return 1;
 }
@@ -6497,7 +6497,7 @@ CMD:unlock(playerid, params[])
     SendClientMessage(playerid, COLOR_RED, " ");
     SendClientMessage(playerid, COLOR_RED, "- Server Unlocked -");
 	new string[144];
-	format(string, sizeof(string), "Admin %s[%i] have unlocked the server.", ReturnPlayerName(playerid), playerid);
+	format(string, sizeof(string), "admin %s[%i] has unlocked the server.", ReturnPlayerName(playerid), playerid);
  	SendClientMessage(playerid, COLOR_RED, string);
 	return 1;
 }
