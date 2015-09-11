@@ -1,9 +1,18 @@
 //------------------------------------------------
 /*
-	GAdmin System (gadmin.pwn)
-	* Using BUD include, fast and SQLITE!
-	* All the best admin system and fastest script.
-	* Contain all advance and necessary commands and systems!
+    								  ___
+		______  ___      _           /   \
+	   / ____/ / _ \    | |          \___/
+	  / /     | | | |   | | __ _  __   _  _  __             ____
+	 | |  ___ | |_| |  _| || |/ \/  \ | || |/_ \   __    __|___ \
+     | | |__ || | | | / _ ||  /\__/\ || ||  / \ |  \ \  / /  / /
+     \ \___| || | | || |_||| |     | || || |  | |   \ \/ / / /_
+	  \______||_| |_|\____||_|     |_||_||_|  |_|    \__/ \____|
+
+	GAdmin System (gadmin.pwn) - Version 2.2
+	* Using easydb include, fast, easy and efficient SQLITE database for the admin system.
+	* Support timeban/tempban, permanent ban and now range bans as well.
+	* Over 100+ admin and player commands, watch the list in one dialog by typing /acmds in chat.
 
  	Author: (creator)
 	* Gammix
@@ -14,6 +23,7 @@
 	* Jochemd - timestamptodate include
 	* Incognito - streamer plugin
 	* Phento - HighestTopList function
+	* R@f - ipmatch function
 	* SAMP team
 
 	(c) Copyright 2015
@@ -45,6 +55,7 @@
 
 #define TABLE_USERS 					"users" //the user data table name (all player stats will be saved in it)
 #define TABLE_BANS       				"bans" //the ban data table name (all the ban data will be saved in it)
+#define TABLE_RANGE_BANS                "rangebans" //the rangeban data table name (all the ban data will be saved in it)
 #define TABLE_FORBIDDEN_WORDS			"forbidden_words" //the bad words data table name
 #define TABLE_FORBIDDEN_NAMES			"forbidden_names" //the bad names data table name
 #define TABLE_FORBIDDEN_TAGS			"forbidden_tags" //the bad tag names data table name
@@ -58,6 +69,8 @@
 
 #define REPORT_TEXTDRAW     			//comment this if you don't want a report textdraw for admin's notifications
 #define MAX_REPORTLOG_LINES     		5 //maximum latest reports the dialog can store (/reports)
+
+#define SPECTATE_TEXTDRAW     			//comment this if you don't want a spectate textdraw for admin's target player stats on screen
 
 #define MAX_LOGIN_ATTEMPTS 				3 //maximum times a player may try loggin in a account
 #define MAX_WARNINGS        			5 //maximum number of warnings a player may get after which he/she get kicked!
@@ -262,6 +275,9 @@ enum UserEnum
 	u_chattime,
 	u_chattext[144],
 	Text3D:u_duty3dtext,
+	u_lastreported,
+	u_lastreportedtime,
+	u_updatetimer,
 
 	//conditions data
 	u_jailtime,
@@ -280,6 +296,9 @@ enum UserEnum
 	bool:u_spec,
 	Float:u_pos[3],
 	u_int,
+	#if defined SPECTATE_TEXTDRAW
+		PlayerText:u_spectxt,
+	#endif
 	u_vw
 };
 new gUser[MAX_PLAYERS][UserEnum];
@@ -290,6 +309,7 @@ enum GlobalEnum
 {
 	s_usertable,
 	s_bantable,
+	s_rangebantable,
 	s_fwordstable,
 	s_fnamestable,
 	s_ftagstable,
@@ -313,9 +333,7 @@ new gGlobal[GlobalEnum];
 //------------------------------------------------
 
 //forbidden lists
-new gForbidden_Words[(MAX_FORBIDDEN_ITEMS + 1)][150];
-new gForbidden_Names[(MAX_FORBIDDEN_ITEMS + 1)][MAX_PLAYER_NAME];
-new gForbidden_Tags[(MAX_FORBIDDEN_ITEMS + 1)][MAX_PLAYER_NAME];
+new gForbidden_Words[(MAX_FORBIDDEN_ITEMS + 1)][150], gForbidden_Names[(MAX_FORBIDDEN_ITEMS + 1)][MAX_PLAYER_NAME], gForbidden_Tags[(MAX_FORBIDDEN_ITEMS + 1)][MAX_PLAYER_NAME];
 
 //------------------------------------------------
 
@@ -358,21 +376,20 @@ new const VehicleNames[212][] =
 public OnFilterScriptInit()
 {
 	print(" ");
-	print("------------------------------------------------");
+	print("_________________| GAdminv2_2 |_________________");
+	print("Attempting to initialize ''GAdminv2_2.amx''...");
 	print(" ");
-	print("Attempting to initialize ''GAdminv2.amx''...");
-	print("--------------------");
 
 	if(! DB::Open(LOCATION_DATABASE))
 	{
-	    printf("[GAdmin] The filterscript couldn't be loaded cause the database file(%s) wasn't opened.", LOCATION_DATABASE);
+	    printf("[GAdminv2_2] - ERROR: The filterscript couldn't be loaded cause the database file(%s) wasn't opened.", LOCATION_DATABASE);
 	    return 0;
 	}
-
+	
 	gGlobal[s_usertable] = DB::VerifyTable(TABLE_USERS, "ID");
 	if(gGlobal[s_usertable] == DB_INVALID_TABLE)
 	{
-	    printf("[GAdmin] The Users table(%s) couldn't be verified.", TABLE_USERS);
+	    printf("[GAdminv2_2] - ERROR: The Users table(%s) couldn't be verified.", TABLE_USERS);
 	}
 	else
 	{
@@ -392,11 +409,28 @@ public OnFilterScriptInit()
 		DB::VerifyColumn(gGlobal[s_usertable], "seconds", DB::TYPE_NUMBER, 0);
 		DB::VerifyColumn(gGlobal[s_usertable], "autologin", DB::TYPE_NUMBER, 0);
 	}
+	printf("[GAdminv2_2] - NOTICE: Total %i accounts loaded from the table ''%s''", DB::CountRows(gGlobal[s_usertable]), TABLE_USERS);
+ 	printf("%i", DB::GetHighestRegisteredKey(gGlobal[s_usertable]));
+    
+	gGlobal[s_rangebantable] = DB::VerifyTable(TABLE_RANGE_BANS, "ID");
+	if(gGlobal[s_bantable] == DB_INVALID_TABLE)
+	{
+	    printf("[GAdminv2_2] - ERROR: The Rangebans table(%s) couldn't be verified.", TABLE_RANGE_BANS);
+	}
+	else
+	{
+		DB::VerifyColumn(gGlobal[s_rangebantable], "ip", DB::TYPE_STRING, "");
+		DB::VerifyColumn(gGlobal[s_rangebantable], "banby", DB::TYPE_STRING, "");
+		DB::VerifyColumn(gGlobal[s_rangebantable], "banon", DB::TYPE_STRING, "");
+		DB::VerifyColumn(gGlobal[s_rangebantable], "reason", DB::TYPE_STRING, "");
+		DB::VerifyColumn(gGlobal[s_rangebantable], "expire", DB::TYPE_NUMBER, 0);
+	}
+	printf("[GAdminv2_2] - NOTICE: Total %i range bans loaded from the table ''%s''", DB::CountRows(gGlobal[s_rangebantable]), TABLE_RANGE_BANS);
 
 	gGlobal[s_bantable] = DB::VerifyTable(TABLE_BANS, "ID");
 	if(gGlobal[s_bantable] == DB_INVALID_TABLE)
 	{
-	    printf("[GAdmin] The Bans table(%s) couldn't be verified.", TABLE_BANS);
+	    printf("[GAdminv2_2] - ERROR: The Bans table(%s) couldn't be verified.", TABLE_BANS);
 	}
 	else
 	{
@@ -407,11 +441,12 @@ public OnFilterScriptInit()
 		DB::VerifyColumn(gGlobal[s_bantable], "reason", DB::TYPE_STRING, "");
 		DB::VerifyColumn(gGlobal[s_bantable], "expire", DB::TYPE_NUMBER, 0);
 	}
+	printf("[GAdminv2_2] - NOTICE: Total %i bans loaded from the table ''%s''", DB::CountRows(gGlobal[s_bantable]), TABLE_BANS);
 
 	gGlobal[s_fwordstable] = DB::VerifyTable(TABLE_FORBIDDEN_WORDS, "ID");
 	if(gGlobal[s_fwordstable] == DB_INVALID_TABLE)
 	{
-	    printf("[GAdmin] The Forbidden Words table(%s) couldn't be verified.", TABLE_FORBIDDEN_WORDS);
+	    printf("[GAdminv2_2] - ERROR: The Forbidden Words table(%s) couldn't be verified.", TABLE_FORBIDDEN_WORDS);
 	}
 	else
 	{
@@ -427,13 +462,13 @@ public OnFilterScriptInit()
 		    	DB::GetStringEntry(gGlobal[s_fwordstable], i + 1, "word", gForbidden_Words[i]);
 		    }
 		}
-		printf("[GAdmin] Total forbidden words: %i", gGlobal[s_fwordscount]);
+		printf("[GAdminv2_2] - NOTICE: Total %i forbidden words loaded from the table ''%s''", gGlobal[s_fwordscount], TABLE_FORBIDDEN_WORDS);
 	}
 
 	gGlobal[s_fnamestable] = DB::VerifyTable(TABLE_FORBIDDEN_NAMES, "ID");
 	if(gGlobal[s_fnamestable] == DB_INVALID_TABLE)
 	{
-	    printf("[GAdmin] The Forbidden Names table(%s) couldn't be verified.", TABLE_FORBIDDEN_NAMES);
+	    printf("[GAdminv2_2] - ERROR: The Forbidden Names table(%s) couldn't be verified.", TABLE_FORBIDDEN_NAMES);
 	}
 	else
 	{
@@ -449,13 +484,13 @@ public OnFilterScriptInit()
 		    	DB::GetStringEntry(gGlobal[s_fnamestable], i + 1, "name", gForbidden_Names[i]);
 		    }
 		}
-		printf("[GAdmin] Total forbidden names: %i", gGlobal[s_fnamescount]);
+		printf("[GAdminv2_2] - NOTICE: Total %i forbidden names loaded from the table ''%s''", gGlobal[s_fnamescount], TABLE_FORBIDDEN_NAMES);
 	}
 
 	gGlobal[s_ftagstable] = DB::VerifyTable(TABLE_FORBIDDEN_TAGS, "ID");
 	if(gGlobal[s_ftagstable] == DB_INVALID_TABLE)
 	{
-	    printf("[GAdmin] The Forbidden Names table(%s) couldn't be verified.", TABLE_FORBIDDEN_TAGS);
+	    printf("[GAdminv2_2] - ERROR: The Forbidden Names table(%s) couldn't be verified.", TABLE_FORBIDDEN_TAGS);
 	}
 	else
 	{
@@ -471,10 +506,8 @@ public OnFilterScriptInit()
 		    	DB::GetStringEntry(gGlobal[s_ftagstable], i + 1, "tag", gForbidden_Tags[i]);
 		    }
 		}
-		printf("[GAdmin] Total forbidden part of names/tags: %i", gGlobal[s_ftagscount]);
+		printf("[GAdminv2_2] - NOTICE: Total %i forbidden part of names/tags loaded from the table ''%s''", gGlobal[s_ftagscount], TABLE_FORBIDDEN_TAGS);
 	}
-
-	SetTimer("PunishmentHandle", 1000, true);
 
 	//report TD
 	#if defined REPORT_TEXTDRAW
@@ -493,10 +526,9 @@ public OnFilterScriptInit()
 	    format(gReportlog[i], 145, "");
 	}
 
-	print("--------------------");
-	print("Gammix's Administration Filterscript (c) 2015 | "LOCATION_DATABASE" | Loading complete...");
 	print(" ");
-	print("------------------------------------------------");
+	print("Gammix's Administration Filterscript (c) 2015 | "LOCATION_DATABASE" | Initialization complete...");
+	print("_________________________________________________");
 	print(" ");
 	return 1;
 }
@@ -521,11 +553,9 @@ public OnFilterScriptExit()
 	#endif
 
 	print(" ");
-	print("------------------------------------------------");
-	print(" ");
+	print("_________________| GAdminv2_2 |_________________");
 	print("Gammix's Administration Filterscript (c) 2015 | "LOCATION_DATABASE" | Unloading complete...");
-	print(" ");
-	print("------------------------------------------------");
+	print("_________________________________________________");
 	print(" ");
 	return 1;
 }
@@ -586,6 +616,48 @@ GetVehicleModelIDFromName(vname[])
 }
 
 //------------------------------------------------
+
+_GetWeaponName(weaponid, weapon[], len)
+{
+	switch(weaponid)
+	{
+	    case 0: format(weapon, len, "Fist");
+	    case 18: format(weapon, len, "Molotov Cocktail");
+		case 44: format(weapon, len, "Night Vision Goggles");
+		case 45: format(weapon, len, "Thermal Goggles");
+		default: GetWeaponName(weaponid, weapon, len);
+	}
+}
+#if defined _ALS_GetWeaponName
+    #undef GetWeaponName
+#else
+    #define _ALS_GetWeaponName
+#endif
+#define GetWeaponName _GetWeaponName
+
+_TogglePlayerSpectating(playerid, set)
+{
+	if(set)
+	{
+		if(GetPlayerState(playerid) != PLAYER_STATE_SPECTATING)
+		{
+		    TogglePlayerSpectating(playerid, true);
+		}
+	}
+	else
+	{
+		if(GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
+		{
+		    TogglePlayerSpectating(playerid, false);
+		}
+	}
+}
+#if defined _ALS_TogglePlayerSpectating
+    #undef TogglePlayerSpectating
+#else
+    #define _ALS_TogglePlayerSpectating
+#endif
+#define TogglePlayerSpectating _TogglePlayerSpectating
 
 GetWeaponIDFromName(WeaponName[])
 {
@@ -842,58 +914,212 @@ ReturnPlayerIP(playerid)
 
 //------------------------------------------------
 
-forward PunishmentHandle();
-public PunishmentHandle()
+forward OnPlayerTimeUpdate(playerid);
+public OnPlayerTimeUpdate(playerid)
 {
-	new string[144];
-	LOOP_PLAYERS(i)
+	new string[1024];
+	
+	#if defined SPECTATE_TEXTDRAW
+	    if(gUser[playerid][u_spec])
+	    {
+	        if(IsPlayerConnected(gUser[playerid][u_specid]))
+	        {
+	            new target = gUser[playerid][u_specid];
+	            new arg_s[96], Float:arg_f, Float:arg_speed[3], arg_weaps[13][2];
+	            strcat(string, "~g~Username: ");
+	            strcat(string, "~y~");
+	            strcat(string, ReturnPlayerIP(target));
+	            strcat(string, " (");
+	            format(arg_s, sizeof(arg_s), "%i", target);
+	            strcat(string, arg_s);
+	            strcat(string, "}");
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Health: ");
+	            strcat(string, "~y~");
+	            GetPlayerHealth(target, arg_f);
+	            format(arg_s, sizeof(arg_s), "%0.2f", arg_f);
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Armour: ");
+	            strcat(string, "~y~");
+	            GetPlayerArmour(target, arg_f);
+	            format(arg_s, sizeof(arg_s), "%0.2f", arg_f);
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Ping: ");
+	            strcat(string, "~y~");
+	            format(arg_s, sizeof(arg_s), "%i", GetPlayerPing(target));
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~IP.: ");
+	            strcat(string, "~y~");
+	            strcat(string, ReturnPlayerIP(target));
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Skinid: ");
+	            strcat(string, "~y~");
+	            format(arg_s, sizeof(arg_s), "%i", GetPlayerSkin(target));
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Teamid: ");
+	            strcat(string, "~y~");
+	            format(arg_s, sizeof(arg_s), "%i", GetPlayerTeam(target));
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Money: ");
+	            strcat(string, "~y~");
+	            format(arg_s, sizeof(arg_s), "$%i", GetPlayerMoney(target));
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Score: ");
+	            strcat(string, "~y~");
+	            format(arg_s, sizeof(arg_s), "%i", GetPlayerScore(target));
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Camera target player: ");
+	            strcat(string, "~y~");
+	            if(GetPlayerCameraTargetPlayer(target) != INVALID_PLAYER_ID)
+	            {
+		            strcat(string, ReturnPlayerName(GetPlayerCameraTargetPlayer(target)));
+		            strcat(string, " (");
+		            format(arg_s, sizeof(arg_s), "%i", GetPlayerScore(target));
+		            strcat(string, arg_s);
+		            strcat(string, ")");
+         		}
+	            else
+	            {
+	            	strcat(string, "No Player");
+	            }
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Weapon target player: ");
+	            strcat(string, "~y~");
+	            if(GetPlayerTargetPlayer(target) != INVALID_PLAYER_ID)
+	            {
+		            strcat(string, ReturnPlayerName(GetPlayerTargetPlayer(target)));
+		            strcat(string, " (");
+		            format(arg_s, sizeof(arg_s), "%i", GetPlayerScore(target));
+		            strcat(string, arg_s);
+		            strcat(string, ")");
+         		}
+	            else
+	            {
+	            	strcat(string, "No Player");
+	            }
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Speed: ");
+	            strcat(string, "~y~");
+	            if(! IsPlayerInAnyVehicle(playerid))
+	            {
+		            GetPlayerVelocity(target, arg_speed[0], arg_speed[1], arg_speed[2]);
+				    arg_f = floatsqroot(floatpower(floatabs(arg_speed[0]), 2.0) + floatpower(floatabs(arg_speed[1]), 2.0) + floatpower(floatabs(arg_speed[2]), 2.0)) * 179.28625;
+		            format(arg_s, sizeof(arg_s), "%0.2f MPH", arg_f);
+		            strcat(string, arg_s);
+				}
+				else
+				{
+		            strcat(string, "0.0 MPH");
+				}
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Vehicle Speed: ");
+	            strcat(string, "~y~");
+	            if(IsPlayerInAnyVehicle(playerid))
+	            {
+		            GetVehicleVelocity(GetPlayerVehicleID(target), arg_speed[0], arg_speed[1], arg_speed[2]);
+				    arg_f = floatsqroot(floatpower(floatabs(arg_speed[0]), 2.0) + floatpower(floatabs(arg_speed[1]), 2.0) + floatpower(floatabs(arg_speed[2]), 2.0)) * 179.28625;
+		            format(arg_s, sizeof(arg_s), "%0.2f MPH", arg_f);
+		            strcat(string, arg_s);
+				}
+				else
+				{
+		            strcat(string, "0.0 MPH");
+				}
+	            strcat(string, "~n~");
+	            strcat(string, "~g~Position: ");
+	            strcat(string, "~y~");
+	            GetPlayerPos(playerid, arg_speed[0], arg_speed[1], arg_speed[2]);
+			    format(arg_s, sizeof(arg_s), "%f, %f, %f", arg_speed[0], arg_speed[1], arg_speed[2]);
+	            strcat(string, arg_s);
+	            strcat(string, "~n~");
+	            strcat(string, "~g~~h~Weapons:");
+	            strcat(string, "~y~");
+	            for(new i; i < 13; i++)
+	            {
+	                GetPlayerWeaponData(target, i, arg_weaps[i][0], arg_weaps[i][1]);
+	                if(arg_weaps[i][0] != 0)
+	                {
+	            		strcat(string, "~n~");
+	            		format(arg_s, sizeof(arg_s), "%i. ", i);
+	            		strcat(string, arg_s);
+	                    GetWeaponName(arg_weaps[i][0], arg_s, sizeof(arg_s));
+	            		strcat(string, arg_s);
+	            		strcat(string, " [Ammo: ");
+	            		format(arg_s, sizeof(arg_s), "%i", arg_weaps[i][1]);
+	            		strcat(string, arg_s);
+	            		strcat(string, "]");
+	            	}
+	            }
+
+				PlayerTextDrawSetString(playerid, gUser[playerid][u_spectxt], string);
+	        }
+	    }
+	#endif
+
+	if(gUser[playerid][u_lastreportedtime] > 0)
 	{
-		if(GetPVarType(i, "GAdmin_Jailed") != PLAYER_VARTYPE_NONE)
-		{
-		    if(gUser[i][u_jailtime] >= 1)
-		    {
-		        gUser[i][u_jailtime] -= 1;
-		    }
-	        else if(gUser[i][u_jailtime] <= 0)
-	        {
-	            DeletePVar(i, "GAdmin_Jailed");
-
-	            gUser[i][u_jailtime] = 0;
-	            format(string, sizeof(string), "* %s[%d] has been unjailed after completing his/her time.", ReturnPlayerName(i), i);
-				SendClientMessageToAll(COLOR_STEEL_BLUE, string);
-				SpawnPlayer(i);
-	        }
+		gUser[playerid][u_lastreportedtime] -= 1;
+	}
+	else
+	{
+	    if(gUser[playerid][u_lastreported] != INVALID_PLAYER_ID)
+	    {
+    		gUser[playerid][u_lastreported] = INVALID_PLAYER_ID;
+			gUser[playerid][u_lastreportedtime] = 0;
 		}
-		if(GetPVarType(i, "GAdmin_Muted") != PLAYER_VARTYPE_NONE)
-		{
-		    if(gUser[i][u_mutetime] >= 1)
-		    {
-		        gUser[i][u_mutetime] -= 1;
-		    }
-	        else if(gUser[i][u_mutetime] <= 0)
-	        {
-	            DeletePVar(i, "GAdmin_Muted");
+	}
 
-	            gUser[i][u_mutetime] = 0;
-	            format(string, sizeof(string), "* %s[%d] has been unmuted after completing his/her time.", ReturnPlayerName(i), i);
-				SendClientMessageToAll(COLOR_STEEL_BLUE, string);
-	        }
-		}
-		if(GetPVarType(i, "GAdmin_CMDMuted") != PLAYER_VARTYPE_NONE)
-		{
-		    if(gUser[i][u_cmutetime] >= 1)
-		    {
-		        gUser[i][u_cmutetime] --;
-		    }
-	        else if(gUser[i][u_cmutetime] <= 0)
-	        {
-	            DeletePVar(i, "GAdmin_CMDMuted");
+	if(GetPVarType(playerid, "GAdmin_Jailed") != PLAYER_VARTYPE_NONE)
+	{
+	    if(gUser[playerid][u_jailtime] >= 1)
+	    {
+	        gUser[playerid][u_jailtime] -= 1;
+	    }
+	    else if(gUser[playerid][u_jailtime] <= 0)
+	    {
+			DeletePVar(playerid, "GAdmin_Jailed");
+	        gUser[playerid][u_jailtime] = 0;
+            format(string, sizeof(string), "* %s[%d] has been unjailed after completing his/her time.", ReturnPlayerName(playerid), playerid);
+			SendClientMessageToAll(COLOR_STEEL_BLUE, string);
+			SpawnPlayer(playerid);
+        }
+	}
+	if(GetPVarType(playerid, "GAdmin_Muted") != PLAYER_VARTYPE_NONE)
+	{
+	    if(gUser[playerid][u_mutetime] >= 1)
+	    {
+	        gUser[playerid][u_mutetime] -= 1;
+	    }
+	    else if(gUser[playerid][u_mutetime] <= 0)
+	    {
+		    DeletePVar(playerid, "GAdmin_Muted");
 
-	            gUser[i][u_cmutetime] = 0;
-	            format(string, sizeof(string), "* %s[%d] has been unmuted for commands after completing his/her time.", ReturnPlayerName(i), i);
-				SendClientMessageToAll(COLOR_STEEL_BLUE, string);
-	        }
-		}
+            gUser[playerid][u_mutetime] = 0;
+            format(string, sizeof(string), "* %s[%d] has been unmuted after completing his/her time.", ReturnPlayerName(playerid), playerid);
+			SendClientMessageToAll(COLOR_STEEL_BLUE, string);
+        }
+	}
+	if(GetPVarType(playerid, "GAdmin_CMDMuted") != PLAYER_VARTYPE_NONE)
+	{
+	    if(gUser[playerid][u_cmutetime] >= 1)
+	    {
+	        gUser[playerid][u_cmutetime] --;
+	    }
+        else if(gUser[playerid][u_cmutetime] <= 0)
+        {
+            DeletePVar(playerid, "GAdmin_CMDMuted");
+
+            gUser[playerid][u_cmutetime] = 0;
+            format(string, sizeof(string), "* %s[%d] has been unmuted for commands after completing his/her time.", ReturnPlayerName(playerid), playerid);
+			SendClientMessageToAll(COLOR_STEEL_BLUE, string);
+        }
 	}
 	return 1;
 }
@@ -916,6 +1142,9 @@ public OnPlayerConnect(playerid)
 	gUser[playerid][u_sessionkills] = 0;
 	gUser[playerid][u_sessiondeaths] = 0;
 	gUser[playerid][u_spree] = 0;
+	gUser[playerid][u_lastreported] = INVALID_PLAYER_ID;
+	gUser[playerid][u_lastreportedtime] = 0;
+	gUser[playerid][u_updatetimer] = SetTimerEx("OnPlayerTimeUpdate", 1000, true, "i", playerid);
 
 	gUser[playerid][u_jailtime] = 0;
 	gUser[playerid][u_mutetime] = 0;
@@ -938,7 +1167,18 @@ public OnPlayerConnect(playerid)
 	gUser[playerid][u_pos][2] = 0.0;
 	gUser[playerid][u_int] = 0;
 	gUser[playerid][u_vw] = 0;
-
+	
+	#if defined SPECTATE_TEXTDRAW
+		gUser[playerid][u_spectxt] = CreatePlayerTextDraw(playerid,17.000000, 170.000000, "~g~Spectate information");
+		PlayerTextDrawBackgroundColor(playerid,gUser[playerid][u_spectxt], 255);
+		PlayerTextDrawFont(playerid,gUser[playerid][u_spectxt], 1);
+		PlayerTextDrawLetterSize(playerid,gUser[playerid][u_spectxt], 0.130000, 0.699998);
+		PlayerTextDrawColor(playerid,gUser[playerid][u_spectxt], -1);
+		PlayerTextDrawSetOutline(playerid,gUser[playerid][u_spectxt], 1);
+		PlayerTextDrawSetProportional(playerid,gUser[playerid][u_spectxt], 1);
+		PlayerTextDrawSetSelectable(playerid,gUser[playerid][u_spectxt], 0);
+	#endif
+	
 	new string[144];
 
     for(new i = 0; i < gGlobal[s_fnamescount]; i++)
@@ -990,11 +1230,19 @@ GetPlayerConnectedTime(playerid, &hours, &minutes, &seconds)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+	KillTimer(gUser[playerid][u_updatetimer]);
+
     for(new i; i < 3; i++)
 	{
 		TextDrawHideForPlayer(playerid, gGlobal[s_locktd][i]);
 	}
-
+	#if defined REPORT_TEXTDRAW
+		TextDrawHideForPlayer(playerid, gGlobal[s_reporttd]);
+	#endif
+	#if defined SPECTATE_TEXTDRAW
+		PlayerTextDrawHide(playerid, gUser[playerid][u_spectxt]);
+	#endif
+	
 	LOOP_PLAYERS(i)
 	{
 		if(IsPlayerSpectating(i))
@@ -1048,12 +1296,154 @@ public OnPlayerDisconnect(playerid, reason)
 
 //------------------------------------------------
 
+ip2long(const sIP[])
+{
+	new
+ 		iCount = 0,
+        iIPAddress = 0,
+        iIPLenght = strlen(sIP);
+
+	if(iIPLenght > 0 && iIPLenght < 17)
+    {
+    	for(new i = 0; i < iIPLenght; i++)
+     		if(sIP[i] == '.')
+       			iCount++;
+
+		if(iCount == 3)
+   		{
+    		iIPAddress = strval(sIP) << 24;
+        	iCount = strfind(sIP, ".", false, 0) + 1;
+            iIPAddress += strval(sIP[iCount]) << 16;
+           	iCount = strfind(sIP, ".", false, iCount) + 1;
+            iIPAddress += strval(sIP[iCount]) << 8;
+            iCount = strfind(sIP, ".", false, iCount) + 1;
+            iIPAddress += strval(sIP[iCount]);
+        }
+    }
+	return iIPAddress;
+}
+
+split(const sSrc[], sDest[][], sDelimiter = ' ')
+{
+	new
+ 		i = 0,
+   		j = 0,
+     	k = 0,
+      	iSourceLen = strlen(sSrc),
+        iLenght = 0;
+
+	while(i <= iSourceLen)
+    {
+    	if(sSrc[i] == sDelimiter || i == iSourceLen)
+     	{
+      		iLenght = strmid(sDest[j], sSrc, k, i, 128);
+        	sDest[j][iLenght] = 0;
+         	k = i + 1;
+          	j++;
+		}
+  		i++;
+	}
+
+	return true;
+}
+
+ipmatch(sIP[], sIP2[], iRange = 26)
+{
+	new
+ 		sRangeInfo[2][18],
+   		iIP = 0,
+     	iSubnet = 0,
+      	iBits = 0,
+       	iMask = 0,
+   		sRange[35];
+
+	format(sRange, sizeof(sRange), "%s/%i", sIP2, iRange);
+	
+	split(sRange, sRangeInfo, '/');
+    iIP = ip2long(sIP);
+    iSubnet = ip2long(sRangeInfo[0]);
+    iBits = strval(sRangeInfo[1]);
+
+    iMask = -1 << (32 - iBits);
+    iSubnet &= iMask;
+
+    return bool:((iIP & iMask) == iSubnet);
+}
+
+//------------------------------------------------
+
 public OnPlayerRequestClass(playerid, classid)
 {
 	TextDrawHideForPlayer(playerid, gGlobal[s_reporttd]);
+	#if defined SPECTATE_TEXTDRAW
+		PlayerTextDrawHide(playerid, gUser[playerid][u_spectxt]);
+	#endif
 
-	new bankey = DB::RetrieveKey(gGlobal[s_bantable], "name", ReturnPlayerName(playerid));
-	if(bankey == DB_INVALID_KEY)
+	for(new i = 1, j = DB::GetHighestRegisteredKey(gGlobal[s_rangebantable]); i <= j; i++)
+	{
+	    new range[18];
+	    DB::GetStringEntry(gGlobal[s_rangebantable], i, "ip", range);
+	    if(ipmatch(ReturnPlayerIP(playerid), range))
+		{
+		    new val;
+		    val = DB::GetIntEntry(gGlobal[s_rangebantable], i, "expire");
+			if(val < gettime() || val == 0)//if the player ban has not expired
+			{
+			    //Ban stats stuff !:D!
+				new str[100];
+				new DIALOG[676];
+				new string[156];
+				strcat(DIALOG, ""SAMP_BLUE"You are range banned from the server:\n\n");
+			    //ban player ip
+				DB::GetStringEntry(gGlobal[s_rangebantable], i, "ip", str);
+			    format(string, sizeof(string), ""WHITE"I.P. Banned: "MARONE"%s\n", str);
+				strcat(DIALOG, string);
+			    //admin name
+				DB::GetStringEntry(gGlobal[s_rangebantable], i, "banby", str);
+			    format(string, sizeof(string), ""WHITE"Banned by: "MARONE"%s\n", str);
+				strcat(DIALOG, string);
+				//reason
+				DB::GetStringEntry(gGlobal[s_rangebantable], i, "reason", str);
+			    format(string, sizeof(string), ""WHITE"Reason: "MARONE"%s\n", str);
+				strcat(DIALOG, string);
+				//ban date
+				DB::GetStringEntry(gGlobal[s_rangebantable], i, "banon", str);
+			    format(string, sizeof(string), ""WHITE"Ban date: "MARONE"%s\n", str);
+				strcat(DIALOG, string);
+				//expire time
+			    new expire[68];
+				if(val == 0) expire = "PERMANENT";
+				else expire = ConvertTime(val);
+			    format(string, sizeof(string), ""WHITE"Expiration timeleft: "MARONE"%s\n\n", expire);
+				strcat(DIALOG, string);
+				//shit!
+				strcat(DIALOG, ""SAMP_BLUE"If you think your ban is a false ban, a bug, or the admin missued his/her power; Please place an appeal in forums.\n");
+				strcat(DIALOG, "Make sure you have a screen this and some good evidence.");
+
+				for(new c; c < 250; c++) SendClientMessage(playerid, -1, " ");
+
+				//show BAN stats in dialog
+				ShowPlayerDialog(	playerid,
+									DIALOG_COMMON,
+									DIALOG_STYLE_MSGBOX,
+									"Player Range Banned",
+									DIALOG,
+									"Close",
+									"");
+
+			    DelayKick(playerid);
+			    return 1;
+			}
+			else//if player ban has expired
+			{
+			    DB::DeleteRow(gGlobal[s_rangebantable], i);
+			    break;
+			}
+	    }
+	}
+
+	new bankey = DB::RetrieveKey(gGlobal[s_bantable], "ip", ReturnPlayerIP(playerid));
+	if(bankey != DB_INVALID_KEY)
 	{
 	    bankey = DB::RetrieveKey(gGlobal[s_bantable], "ip", ReturnPlayerIP(playerid));
 	}
@@ -1092,7 +1482,7 @@ public OnPlayerRequestClass(playerid, classid)
 			//expire time
 		    new expire[68];
 			if(val == 0) expire = "PERMANENT";
-			else expire = ConvertTime(val - gettime());
+			else expire = ConvertTime(val);
 		    format(string, sizeof(string), ""WHITE"Expiration timeleft: "MARONE"%s\n\n", expire);
 			strcat(DIALOG, string);
 			//shit!
@@ -1214,6 +1604,10 @@ public OnPlayerRequestSpawn(playerid)
 
 public OnPlayerSpawn(playerid)
 {
+	#if defined SPECTATE_TEXTDRAW
+		PlayerTextDrawHide(playerid, gUser[playerid][u_spectxt]);
+	#endif
+	
     if(GetPVarType(playerid, "GAdmin_Jailed") != PLAYER_VARTYPE_NONE)
     {
 		JailPlayer(playerid);
@@ -1272,6 +1666,10 @@ public OnPlayerSpawn(playerid)
 
 public OnPlayerDeath(playerid, killerid, reason)
 {
+	#if defined SPECTATE_TEXTDRAW
+		PlayerTextDrawHide(playerid, gUser[playerid][u_spectxt]);
+	#endif
+	
     new Float:pos[3];
 	GetPlayerPos(playerid, pos[0], pos[1], pos[2]);
 
@@ -2841,7 +3239,7 @@ CMD:acmds(playerid, params[])
 
 	strcat(DIALOG, ""HOT_PINK"PLAYER COMMANDS:\n");
   	strcat(DIALOG, ""SAMP_BLUE"/admins, /vips, /report, /pm, /reply, /nopm, /stats, /register, /login, /changename, /changepass,\n");
-  	strcat(DIALOG, ""SAMP_BLUE" /autologin, /savestats, /time, /id, /richlist, /scorelist\n\n");
+  	strcat(DIALOG, ""SAMP_BLUE" /autologin, /savestats, /time, /id, /richlist, /scorelist, /search\n\n");
 
 	if(GetPlayerGAdminLevel(playerid) >= 1 || IsPlayerAdmin(playerid))
 	{
@@ -2855,7 +3253,7 @@ CMD:acmds(playerid, params[])
   		strcat(DIALOG, ""SAMP_BLUE"/jetpack, /aweaps, /show, /muted, /jailed, /carhealth, /eject, /carpaint,\n");
   		strcat(DIALOG, ""SAMP_BLUE"/carcolor, /givecar, /car, /akill, /jail, /unjail, /mute, /unmute, /setskin,\n");
   		strcat(DIALOG, ""SAMP_BLUE"/cc, /heal, /armour, /setinterior, /setworld, /explode, /disarm, /tune\n");
-  		strcat(DIALOG, ""SAMP_BLUE"/ban, /oban, /searchban, /searchipban, /unban, /atele, /ann2\n\n");
+  		strcat(DIALOG, ""SAMP_BLUE"/ban, /oban, /searchban, /searchipban, /searchrangeban, /unban, /atele, /ann2\n\n");
 	}
 	if(GetPlayerGAdminLevel(playerid) >= 3 || IsPlayerAdmin(playerid))
 	{
@@ -2869,7 +3267,7 @@ CMD:acmds(playerid, params[])
 		strcat(DIALOG, ""HOT_PINK"ADMIN LEVEL 4:\n");
 		strcat(DIALOG, ""SAMP_BLUE"/fakedeath, /cmdmuted, /cmdmute, /uncmdmute, /killall, /ejectall, /disarmall, /muteall, /unmuteall,\n");
 		strcat(DIALOG, "/giveallscore, /giveallcash, /setalltime, /setallweather, /respawncars, /clearwindow, /giveallweapon,\n");
-		strcat(DIALOG, "/object, /destroyobject, /editobject,\n\n");
+		strcat(DIALOG, "/object, /destroyobject, /editobject, /banrange, /unbanrange\n\n");
 	}
 	if(GetPlayerGAdminLevel(playerid) >= 5 || IsPlayerAdmin(playerid))
 	{
@@ -2900,6 +3298,10 @@ CMD:spec(playerid, params[])
 
 	GetPlayerPos(playerid, gUser[playerid][u_pos][0], gUser[playerid][u_pos][1], gUser[playerid][u_pos][2]);
 
+	#if defined SPECTATE_TEXTDRAW
+		PlayerTextDrawShow(playerid, gUser[playerid][u_spectxt]);
+	#endif
+	
 	gUser[playerid][u_int] = GetPlayerInterior(playerid);
 	gUser[playerid][u_vw] = GetPlayerVirtualWorld(playerid);
 
@@ -2918,6 +3320,10 @@ CMD:specoff(playerid, params[])
 
 	TogglePlayerSpectating(playerid, false);
 
+	#if defined SPECTATE_TEXTDRAW
+		PlayerTextDrawHide(playerid, gUser[playerid][u_spectxt]);
+	#endif
+	
     gUser[playerid][u_spec] = false;
     gUser[playerid][u_specid] = INVALID_PLAYER_ID;
     SetPlayerPos(playerid, gUser[playerid][u_pos][0], gUser[playerid][u_pos][1], gUser[playerid][u_pos][2]);
@@ -3058,6 +3464,16 @@ CMD:reports(playerid, params[])
 {
 	//check if the player is a admin
 	LevelCheck(playerid, 1);
+
+	LOOP_PLAYERS(i)
+	{
+	    if(gUser[i][u_lastreported] != INVALID_PLAYER_ID)
+	    {
+	        SendClientMessage(playerid, COLOR_DODGER_BLUE, "* An admin is checking you report now.");
+			gUser[i][u_lastreported] = INVALID_PLAYER_ID;
+			gUser[i][u_lastreportedtime] = 0;
+	    }
+	}
 
 	new DIALOG[956], string[156];
 	strcat(DIALOG, ""LIME"Reports log sent by players\n\n");
@@ -4128,15 +4544,15 @@ CMD:ban(playerid, params[])
 	{
 	    new string[144];
 	    format(string, sizeof(string), "* %s[%i] has been banned by admin %s[%d] [Reason: %s]", ReturnPlayerName(target), target, ReturnPlayerName(playerid), playerid, reason);
-		SendClientMessageToAll(COLOR_RED, string);
+		SendClientMessage(target, COLOR_RED, string);
 	}
 	else
 	{
 	    new string[144];
 	    format(string, sizeof(string), "* %s[%i] has been temp banned by admin %s[%d] [Reason: %s]", ReturnPlayerName(target), target, ReturnPlayerName(playerid), playerid, reason);
-		SendClientMessageToAll(COLOR_RED, string);
-	    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime( time - gettime() ));
-		SendClientMessageToAll(COLOR_RED, string);
+		SendClientMessage(target, COLOR_RED, string);
+	    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime(time));
+		SendClientMessage(target, COLOR_RED, string);
 	}
  	PlayerPlaySound(target, 1057, 0.0, 0.0, 0.0);
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
@@ -4163,19 +4579,19 @@ CMD:oban(playerid, params[])
 	    }
 	}
 
-	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(playerid));
+	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", name);
 	if(key != DB_INVALID_KEY)
 	{
 		if(GetPlayerGAdminLevel(playerid) < DB::GetIntEntry(gGlobal[s_usertable], key, "admin")) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin.");
 	}
 
+	key = DB::RetrieveKey(gGlobal[s_bantable], "name", name);
+	if(key != DB_INVALID_KEY) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified user is already banned.");
+
 	if(days < 0) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid days, must be greater than 0 for temp ban, or 0 for permanent ban.");
 
 	if(strlen(reason) < 3 || strlen(reason) > 35) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid reason length, must be b/w 0-35 characters.");
-
-	new ip[18] = "N/A";
- 	DB::GetStringEntry(gGlobal[s_usertable], key, "ip", ip);
-
+	
 	new bandate[18], date[3], time;
 	getdate(date[0], date[1], date[2]);
 	format(bandate, sizeof(bandate), "%02i/%02i/%i", date[2], date[1], date[0]);
@@ -4185,7 +4601,7 @@ CMD:oban(playerid, params[])
 
 	DB::CreateRow(gGlobal[s_bantable], "name", name);
 	new bankey = DB::RetrieveKey(gGlobal[s_bantable], "name", name);
-	DB::SetStringEntry(gGlobal[s_bantable], bankey, "ip", ip);
+	DB::SetStringEntry(gGlobal[s_bantable], bankey, "ip", "");
 	DB::SetStringEntry(gGlobal[s_bantable], bankey, "banby", ReturnPlayerName(playerid));
 	DB::SetStringEntry(gGlobal[s_bantable], bankey, "banon", bandate);
 	DB::SetStringEntry(gGlobal[s_bantable], bankey, "reason", reason);
@@ -4202,7 +4618,7 @@ CMD:oban(playerid, params[])
 	    new string[144];
 	    format(string, sizeof(string), "* %s has been offline temp banned by admin %s[%d] [Reason: %s]", name, ReturnPlayerName(playerid), playerid, reason);
 		SendClientMessageToAll(COLOR_RED, string);
-	    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime( time - gettime() ));
+	    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime(time));
 		SendClientMessageToAll(COLOR_RED, string);
 	}
 
@@ -4247,7 +4663,7 @@ CMD:searchban(playerid, params[])
 	new val = DB::GetIntEntry(gGlobal[s_bantable], bankey, "expire");
 	new expire[68];
 	if(val == 0) expire = "PERMANENT";
-	else expire = ConvertTime(val - gettime());
+	else expire = ConvertTime(val);
 	format(string, sizeof(string), ""WHITE"Expiration timeleft: "MARONE"%s\n", expire);
 	strcat(DIALOG, string);
 
@@ -4270,7 +4686,7 @@ CMD:searchipban(playerid, params[])
 	new ip[18];
 	if(sscanf(params,"s[18]", ip)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /searchipban [ip]");
 
-	new bankey = DB::RetrieveKey(gGlobal[s_bantable], "name", ip);
+	new bankey = DB::RetrieveKey(gGlobal[s_bantable], "ip", ip);
 	if(bankey == DB_INVALID_KEY) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified ip is not banned.");
 
 	new str[100];
@@ -4299,7 +4715,7 @@ CMD:searchipban(playerid, params[])
 	new val = DB::GetIntEntry(gGlobal[s_bantable], bankey, "expire");
 	new expire[68];
 	if(val == 0) expire = "PERMANENT";
-	else expire = ConvertTime(val - gettime());
+	else expire = ConvertTime(val);
 	format(string, sizeof(string), ""WHITE"Expiration timeleft: "MARONE"%s\n", expire);
 	strcat(DIALOG, string);
 
@@ -4308,6 +4724,68 @@ CMD:searchipban(playerid, params[])
 						DIALOG_COMMON,
 						DIALOG_STYLE_MSGBOX,
 						"Search-Ban results",
+						DIALOG,
+						"Close",
+						"");
+	return 1;
+}
+
+CMD:searchrangeban(playerid, params[])
+{
+	//check if the player is a admin
+	LevelCheck(playerid, 2);
+
+	new ip[18];
+	if(sscanf(params,"s[18]", ip)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /searchrangeban [ip]");
+
+	new bankey = DB_INVALID_KEY;
+    for(new i = 1, j = DB::GetHighestRegisteredKey(gGlobal[s_rangebantable]); i <= j; i++)
+	{
+	    new range[18];
+	    DB::GetStringEntry(gGlobal[s_rangebantable], i, "ip", range);
+	    if(ipmatch(ip, range))
+	    {
+    		bankey = i;
+    		break;
+        }
+    }
+	if(bankey == DB_INVALID_KEY) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified ip is not banned.");
+
+	new str[100];
+	new DIALOG[676];
+	new string[144];
+	//search result base !:D!
+	format(string, sizeof(string), ""SAMP_BLUE"Search range ban results for ip %s:\n\n", ip);
+	strcat(DIALOG, string);
+	//user name
+ 	DB::GetStringEntry(gGlobal[s_rangebantable], bankey, "ip", str);
+ 	format(string, sizeof(string), ""WHITE"I.P. Banned: "MARONE"%s\n", str);
+ 	strcat(DIALOG, string);
+	//admin name
+	DB::GetStringEntry(gGlobal[s_rangebantable], bankey, "banby", str);
+	format(string, sizeof(string), ""WHITE"Banned by: "MARONE"%s\n", str);
+	strcat(DIALOG, string);
+	//reason
+	DB::GetStringEntry(gGlobal[s_rangebantable], bankey, "reason", str);
+	format(string, sizeof(string), ""WHITE"Reason: "MARONE"%s\n", str);
+	strcat(DIALOG, string);
+	//ban date
+	DB::GetStringEntry(gGlobal[s_rangebantable], bankey, "banon", str);
+	format(string, sizeof(string), ""WHITE"Ban date: "MARONE"%s\n", str);
+	strcat(DIALOG, string);
+	//expire time
+	new val = DB::GetIntEntry(gGlobal[s_rangebantable], bankey, "expire");
+	new expire[68];
+	if(val == 0) expire = "PERMANENT";
+	else expire = ConvertTime(val);
+	format(string, sizeof(string), ""WHITE"Expiration timeleft: "MARONE"%s\n", expire);
+	strcat(DIALOG, string);
+
+	//show BAN stats in dialog
+	ShowPlayerDialog(	playerid,
+						DIALOG_COMMON,
+						DIALOG_STYLE_MSGBOX,
+						"Search-Rangeban results",
 						DIALOG,
 						"Close",
 						"");
@@ -4970,6 +5448,18 @@ CMD:banip(playerid, params[])
 
 	if(strlen(reason) < 3 || strlen(reason) > 35) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid reason length, must be b/w 0-35 characters.");
 
+	new key = DB::RetrieveKey(gGlobal[s_usertable], "ip", ip);
+	if(key != DB_INVALID_KEY)
+	{
+	    if(DB::GetIntEntry(gGlobal[s_usertable], key, "admin") > GetPlayerGAdminLevel(playerid)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin's ip.");
+	}
+	
+	key = DB::RetrieveKey(gGlobal[s_bantable], "ip", ip);
+	if(key != DB_INVALID_KEY)
+	{
+		return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified ip is already banned.");
+	}
+	
 	new bandate[18], date[3], time;
 	getdate(date[0], date[1], date[2]);
 	format(bandate, sizeof(bandate), "%02i/%02i/%i", date[2], date[1], date[0]);
@@ -4982,7 +5472,9 @@ CMD:banip(playerid, params[])
 	{
 	    if(! strcmp(ip, ReturnPlayerIP(i)))
 	    {
-	        GetPlayerName(i, name, MAX_PLAYER_NAME);
+	        if(GetPlayerGAdminLevel(i) > GetPlayerGAdminLevel(playerid)) return  SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin.");
+
+			GetPlayerName(i, name, MAX_PLAYER_NAME);
 	        break;
 	    }
 	}
@@ -5004,9 +5496,7 @@ CMD:banip(playerid, params[])
 	else
 	{
 	    new string[144];
-	    format(string, sizeof(string), "* You have temp banned the ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
-		SendClientMessageToAll(COLOR_RED, string);
-	    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime( time - gettime() ));
+	    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime(time));
 		SendClientMessageToAll(COLOR_RED, string);
 	}
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
@@ -5019,15 +5509,15 @@ CMD:banip(playerid, params[])
 			{
 			    new string[144];
 			    format(string, sizeof(string), "* Admin %s[%i] have banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
-				SendClientMessageToAll(COLOR_RED, string);
+				SendClientMessage(i, COLOR_RED, string);
 			}
 			else
 			{
 			    new string[144];
 			    format(string, sizeof(string), "* Admin %s[%i] have temp banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
-				SendClientMessageToAll(COLOR_RED, string);
-			    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime( time - gettime() ));
-				SendClientMessageToAll(COLOR_RED, string);
+				SendClientMessage(i, COLOR_RED, string);
+			    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime(time));
+				SendClientMessage(i, COLOR_RED, string);
 			}
  			PlayerPlaySound(i, 1057, 0.0, 0.0, 0.0);
 			DelayKick(i);
@@ -5106,6 +5596,135 @@ CMD:unfreezeall(playerid, params[])
 //------------------------------------------------
 
 //Admin level 4+
+CMD:banrange(playerid, params[])
+{
+	//check if the player is a admin
+	LevelCheck(playerid, 3);
+
+	new ip[18], reason[35], days;
+	if(sscanf(params,"s[18]s[35]I(10)", ip, reason, days)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /banip [ip] [reason] [*days]");
+
+    if(! strcmp(ip, ReturnPlayerIP(playerid)) || ipmatch(ReturnPlayerIP(playerid), ip)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You can't range ban yourself.");
+
+	if(days < 0) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid days, must be greater than 0 for temp range ban, or 0 for permanent range ban.");
+
+	if(strlen(reason) < 3 || strlen(reason) > 35) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid reason length, must be b/w 0-35 characters.");
+
+    for(new i = 1, j = DB::GetHighestRegisteredKey(gGlobal[s_usertable]); i <= j; i++)
+	{
+	    new uIP[18];
+  		DB::GetStringEntry(gGlobal[s_usertable], i, "ip", uIP);
+	    if(ipmatch(uIP, ip))
+	    {
+	        return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin's ip.");
+	    }
+	}
+	
+	for(new i = 1, j = DB::GetHighestRegisteredKey(gGlobal[s_rangebantable]); i <= j; i++)
+	{
+	    new uIP[18];
+  		DB::GetStringEntry(gGlobal[s_rangebantable], i, "ip", uIP);
+	    if(ipmatch(uIP, ip))
+	    {
+			return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified ip is already range banned.");
+	    }
+	}
+
+	new bandate[18], date[3], time;
+	getdate(date[0], date[1], date[2]);
+	format(bandate, sizeof(bandate), "%02i/%02i/%i", date[2], date[1], date[0]);
+
+	if(days == 0) time = 0;
+	else time = ((days * 24 * 60 * 60) + gettime());
+
+	LOOP_PLAYERS(i)
+	{
+	    if(ipmatch(ReturnPlayerIP(i), ip))
+	    {
+            if(GetPlayerGAdminLevel(i) > GetPlayerGAdminLevel(playerid))
+			{
+			    SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin's ip.");
+			}
+	        break;
+	    }
+	}
+
+    DB::CreateRow(gGlobal[s_rangebantable], "ip", ip);
+	new bankey = DB::RetrieveKey(gGlobal[s_rangebantable], "ip", ip);
+	DB::SetStringEntry(gGlobal[s_rangebantable], bankey, "banby", ReturnPlayerName(playerid));
+	DB::SetStringEntry(gGlobal[s_rangebantable], bankey, "banon", bandate);
+	DB::SetStringEntry(gGlobal[s_rangebantable], bankey, "reason", reason);
+	DB::SetIntEntry(gGlobal[s_rangebantable], bankey, "expire", time);
+
+	if(days == 0)
+	{
+	    new string[144];
+	    format(string, sizeof(string), "* You have range banned the ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+		SendClientMessage(playerid, COLOR_RED, string);
+	}
+	else
+	{
+	    new string[144];
+	    format(string, sizeof(string), "* You have temp range banned the ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+		SendClientMessage(playerid, COLOR_RED, string);
+	    format(string, sizeof(string), "* Range banned for %i days [Unban on %s]", days, ConvertTime( time - gettime() ));
+		SendClientMessage(playerid, COLOR_RED, string);
+	}
+	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
+
+	LOOP_PLAYERS(i)
+	{
+	    if(ipmatch(ReturnPlayerIP(i), ip))
+	    {
+	        if(days == 0)
+			{
+			    new string[144];
+			    format(string, sizeof(string), "* Admin %s[%i] have range banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+				SendClientMessage(i, COLOR_RED, string);
+			}
+			else
+			{
+			    new string[144];
+			    format(string, sizeof(string), "* Admin %s[%i] have temp range banned your ip %s [Reason: %s].", ReturnPlayerName(playerid), playerid, ip, reason);
+				SendClientMessage(i, COLOR_RED, string);
+			    format(string, sizeof(string), "* Banned for %i days [Unban on %s]", days, ConvertTime( time - gettime() ));
+				SendClientMessage(i, COLOR_RED, string);
+			}
+ 			PlayerPlaySound(i, 1057, 0.0, 0.0, 0.0);
+			DelayKick(i);
+		}
+	}
+	return 1;
+}
+
+CMD:unbanrange(playerid, params[])
+{
+	//check if the player is a admin
+	LevelCheck(playerid, 3);
+
+	new ip[18];
+	if(sscanf(params,"s[18]", ip)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /unbanrange [ip]");
+
+    for(new i = 1, j = DB::GetHighestRegisteredKey(gGlobal[s_rangebantable]); i <= j; i++)
+	{
+	    new range[18];
+	    DB::GetStringEntry(gGlobal[s_rangebantable], i, "ip", range);
+	    if(ipmatch(ip, range))
+	    {
+            DB::DeleteRow(gGlobal[s_rangebantable], i);
+            
+            new string[144];
+	        format(string, sizeof(string), "* You have unbanned ip range %s successfully.", ip);
+	        SendClientMessage(playerid, COLOR_GREEN, string);
+	        
+            break;
+        }
+    }
+
+	SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified ip is not range banned.");
+	return 1;
+}
+
 CMD:fakedeath(playerid, params[])
 {
 	//check if the player is a admin
@@ -6014,7 +6633,7 @@ CMD:reloaddb(playerid, params[])
 {
 	//check if the player is a admin
 	LevelCheck(playerid, 5);
-	
+
     gGlobal[s_fwordscount] = DB::CountRows(gGlobal[s_fwordstable]);
 	for(new i = 0; i < MAX_FORBIDDEN_ITEMS; i++)
 	{
@@ -6047,7 +6666,7 @@ CMD:reloaddb(playerid, params[])
 	    	DB::GetStringEntry(gGlobal[s_ftagstable], i + 1, "tag", gForbidden_Tags[i]);
 	    }
 	}
-	
+
 	SendClientMessage(playerid, COLOR_DODGER_BLUE, "** Server database has been reloaded successfully. (Forbidden names, words, tags are now reloaded)");
 	return 1;
 }
@@ -6177,6 +6796,9 @@ CMD:report(playerid, params[])
 	new hour, minute, second;
 	gettime(hour, minute, second);
 
+    gUser[playerid][u_lastreported] = target;
+	gUser[playerid][u_lastreportedtime] = 80;
+
 	new string[145];
 	format(string, sizeof(string), "%02d:%02d | %s[%i] reported against %s[%i] | Reason: %s", hour, minute, ReturnPlayerName(playerid), playerid, ReturnPlayerName(target), target, reason);
 	SendClientMessageForAdmins(COLOR_YELLOW, string);
@@ -6249,6 +6871,7 @@ CMD:changename(playerid, params[])
 	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", name);
     if(key != DB_INVALID_KEY) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: That username is already registered, try another one!");
 
+    key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(playerid));
 	DB::SetStringEntry(gGlobal[s_usertable], key, "username", name);
 
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
@@ -6272,7 +6895,9 @@ CMD:changepass(playerid, params[])
 	if(strlen(pass) < 4 || strlen(pass) > MAX_PLAYER_NAME) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid password length, must be b/w 4-24.");
 
 	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(playerid));
-	DB::SetStringEntry(gGlobal[s_usertable], key, "password", pass);
+	new hash[65];
+	DB::Hash(hash, sizeof(hash), pass);
+	DB::SetStringEntry(gGlobal[s_usertable], key, "password", hash);
 
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
 
@@ -6550,6 +7175,45 @@ CMD:scorelist(playerid, params[])
     return 1;
 }
 
+CMD:search(playerid, params[])
+{
+	new name[MAX_PLAYER_NAME];
+	if(sscanf(params, "s[24]", name)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /search [playername]");
+
+	SendClientMessage(playerid, COLOR_ORANGE_RED, " ");
+	new string[150], arg[56];
+	format(string, sizeof(string), "- Search result for %s:", name);
+	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
+
+	new count = 0;
+	for(new i = 1, j = DB::GetHighestRegisteredKey(gGlobal[s_usertable]); i <= j; i++)
+	{
+	    new uName[MAX_PLAYER_NAME];
+  		DB::GetStringEntry(gGlobal[s_usertable], i, "username", uName);
+
+		if(strfind(uName, name, true) != -1)
+	    {
+			count += 1;
+			
+	    	format(string, sizeof(string), "%i", count);
+	    	strcat(string, ". ");
+	    	strcat(string, uName);
+	    	strcat(string, " [Join date: ");
+	        DB::GetStringEntry(gGlobal[s_usertable], i, "joindate", arg);
+	    	strcat(string, arg);
+	    	strcat(string, " | Last active: ");
+	        DB::GetStringEntry(gGlobal[s_usertable], i, "laston", arg);
+	    	strcat(string, arg);
+	    	strcat(string, "]");
+			SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
+		}
+	}
+
+	if(! count) return SendClientMessage(playerid, COLOR_DODGER_BLUE, "- No account found with that part of name!");
+	return 1;
+}
+CMD:searchuser(playerid, params[]) return cmd_search(playerid, params);
+
 //------------------------------------------------
 
 stock ConvertTime(time)
@@ -6601,6 +7265,63 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 		}
     }
     return 1;
+}
+
+//------------------------------------------------
+
+public OnPlayerClickPlayer(playerid, clickedplayerid)
+{
+    GetPlayerConnectedTime(clickedplayerid, gUser[clickedplayerid][u_hours], gUser[clickedplayerid][u_minutes], gUser[clickedplayerid][u_seconds]);
+	//Stats stuff !:D!
+	new string[156];
+	format(string, sizeof(string), "You are now viewing %s's [id: %i] statics!", ReturnPlayerName(clickedplayerid), clickedplayerid);
+	SendClientMessage(playerid, COLOR_GREEN, string);
+	
+	new MESSAGE[676];
+	format(string, sizeof(string), "Kills: %i | ", gUser[clickedplayerid][u_kills]);
+	strcat(MESSAGE, string);
+	format(string, sizeof(string), "Deaths: %i | ", gUser[clickedplayerid][u_deaths]);
+	strcat(MESSAGE, string);
+	format(string, sizeof(string), "Session Kills: %i | ", gUser[clickedplayerid][u_sessionkills]);
+	strcat(MESSAGE, string);
+	format(string, sizeof(string), "Session Deaths: %i | ", gUser[clickedplayerid][u_sessiondeaths]);
+	strcat(MESSAGE, string);
+	format(string, sizeof(string), "Killing Spree: %i | ", gUser[clickedplayerid][u_spree]);
+	strcat(MESSAGE, string);
+	//calculate Kill/Deaths ratio
+	new Float:ratio;
+	if(gUser[clickedplayerid][u_deaths] <= 0) ratio = 0.0;
+	else ratio = Float:(gUser[clickedplayerid][u_kills] / gUser[clickedplayerid][u_deaths]);
+	format(string, sizeof(string), "K/D Ratio: %0.2f | ", ratio);
+	strcat(MESSAGE, string);
+	format(string, sizeof(string), "Score: %i | ", GetPlayerScore(clickedplayerid));
+	strcat(MESSAGE, string);
+	format(string, sizeof(string), "Money: $%i", GetPlayerMoney(clickedplayerid));
+	strcat(MESSAGE, string);
+	SendClientMessage(playerid, COLOR_GREEN, MESSAGE);
+	//player game play time
+	format(string, sizeof(string), "Played time: %02i hours %02i minutes %02i seconds | ", gUser[clickedplayerid][u_hours], gUser[clickedplayerid][u_minutes], gUser[clickedplayerid][u_seconds]);
+	strcat(MESSAGE, string);
+	//print if registered or not
+	new yes[4] = "YES", no[3] = "NO";
+	format(string, sizeof(string), "Registered: %s | ", ((GetPVarType(playerid, "GAdmin_Loggedin") != PLAYER_VARTYPE_NONE) ? yes : no));
+	strcat(MESSAGE, string);
+	//get user id
+	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(clickedplayerid));
+	new DATE[18];
+	//joined date
+	DB::GetStringEntry(gGlobal[s_usertable], key, "joindate", DATE);
+	format(string, sizeof(string), "Join date: %s | ", DATE);
+	strcat(MESSAGE, string);
+	//last visit to server date
+	DB::GetStringEntry(gGlobal[s_usertable], key, "laston", DATE);
+	format(string, sizeof(string), "Last visit: %s | ", DATE);
+	strcat(MESSAGE, string);
+	//current team id
+	format(string, sizeof(string), "Team: %i", GetPlayerTeam(clickedplayerid));
+	strcat(MESSAGE, string);
+	SendClientMessage(playerid, COLOR_GREEN, MESSAGE);
+	return 1;
 }
 
 //------------------------------------------------
