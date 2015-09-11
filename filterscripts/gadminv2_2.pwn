@@ -3250,7 +3250,7 @@ public OnPlayerCommandReceived(playerid, cmdtext[])
 //Admin level 1+
 CMD:acmds(playerid, params[])
 {
-	new DIALOG[1246+200];
+	new DIALOG[1246+546];
 
 	strcat(DIALOG, ""HOT_PINK"PLAYER COMMANDS:\n");
   	strcat(DIALOG, ""SAMP_BLUE"/admins, /vips, /report, /pm, /reply, /nopm, /stats, /register, /login, /changename, /changepass,\n");
