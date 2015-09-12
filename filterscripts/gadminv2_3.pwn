@@ -9,7 +9,7 @@
      \ \___| || | | || |_||| |     | || || |  | |   \ \/ / / /_
 	  \______||_| |_|\____||_|     |_||_||_|  |_|    \__/ \____|
 
-	GAdmin System (gadmin.pwn) - Version 2.3.1
+	GAdmin System (gadmin.pwn) - Version 2.3.2
 	* Using easydb include, fast, easy and efficient SQLITE database for the admin system.
 	* Support timeban/tempban, permanent ban and now range bans as well.
 	* Over 100+ admin and player commands, watch the list in one dialog by typing /acmds in chat.
@@ -78,6 +78,9 @@
 
 #define MAX_VIP_LEVELS      			3 //maximum VIP/Donor ranks
 #define MAX_ADMIN_LEVELS    			6 //maximum Admin ranks, make sure its greater than 5
+
+#define ANTI_FLOOD                      //commaent this if you don't want anti flood protection
+#define ANTI_SPAM                       //commaent this if you don't want anti spam protection
 
 new const Float:gAdminSpawn[][4] =      //random admin spawns (spawns admin when on duty only)
 {
@@ -273,8 +276,12 @@ enum UserEnum
 	u_sessionkills,
 	u_sessiondeaths,
 	u_spree,
-	u_chattime,
-	u_chattext[144],
+	#if defined ANTI_FLOOD
+		u_chattime,
+	#endif
+	#if defined ANTI_SPAM
+		u_chattext[144],
+	#endif
 	Text3D:u_duty3dtext,
 	u_lastreported,
 	u_lastreportedtime,
@@ -294,6 +301,7 @@ enum UserEnum
 
 	//spectate data
 	u_specid,
+	bool:u_spec,
 	Float:u_pos[3],
 	u_int,
 	#if defined SPECTATE_TEXTDRAW
@@ -773,6 +781,7 @@ SetPlayerSpectating(playerid, targetid)
     format(string, sizeof(string),"-> You are now spectating %s[%i].", ReturnPlayerName(targetid), targetid);
     SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
 
+    gUser[playerid][u_spec] = true;
     gUser[playerid][u_specid] = targetid;
 	return true;
 }
@@ -925,16 +934,11 @@ public OnPlayerTimeUpdate(playerid)
 {
 	new string[1024];
 
-	if(IsPlayerSpectating(playerid))
-	{
- 		if(IsPlayerConnected(gUser[playerid][u_specid]))
-   		{
-			if(GetPlayerVirtualWorld(playerid) != GetPlayerVirtualWorld(gUser[playerid][u_specid]))
-			{
-  				SetPlayerVirtualWorld(playerid, GetPlayerVirtualWorld(gUser[playerid][u_specid]));
-			}
-
-			#if defined SPECTATE_TEXTDRAW
+	#if defined SPECTATE_TEXTDRAW
+	    if(gUser[playerid][u_spec])
+	    {
+	        if(IsPlayerConnected(gUser[playerid][u_specid]))
+	        {
 	            new target = gUser[playerid][u_specid];
 	            new arg_s[96], Float:arg_f, Float:arg_speed[3], arg_weaps[13][2];
 	            strcat(string, "~g~Username: ");
@@ -1078,9 +1082,9 @@ public OnPlayerTimeUpdate(playerid)
 	            strcat(string, "~g~You can use MMB (KEY_LOOK_BEHIND) or /specoff to stop spectating");
 
 				PlayerTextDrawSetString(playerid, gUser[playerid][u_spectxt], string);
-			#endif
-        }
-    }
+	        }
+	    }
+	#endif
 
 	if(gUser[playerid][u_lastreportedtime] > 0)
 	{
@@ -1210,6 +1214,7 @@ public OnPlayerConnect(playerid)
 	gUser[playerid][u_lastuser] = -1;
 
 	gUser[playerid][u_specid] = INVALID_PLAYER_ID;
+	gUser[playerid][u_spec] = false;
 	gUser[playerid][u_pos][0] = 0.0;
 	gUser[playerid][u_pos][1] = 0.0;
 	gUser[playerid][u_pos][2] = 0.0;
@@ -1351,8 +1356,12 @@ public OnPlayerDisconnect(playerid, reason)
 		}
 	}
 
-	gUser[playerid][u_chattime] = 0;
-	format(gUser[playerid][u_chattext], 144, "");
+	#if defined ANTI_FLOOD
+		gUser[playerid][u_chattime] = 0;
+	#endif
+	#if defined ANTI_SPAM
+		format(gUser[playerid][u_chattext], 144, "");
+	#endif
 
 	new string[144], reasonstr[25];
 	switch(reason)
@@ -3266,20 +3275,24 @@ public OnPlayerText(playerid, text[])
 	    return 0;
 	}
 
-	//anti flooding
-    if((GetTickCount() - gUser[playerid][u_chattime]) < 1000)
-	{
-	    SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Please don't flood in the chat.");
-	    return 0;
-	}
+	#if defined ANTI_FLOOD
+		//anti flooding
+	    if((GetTickCount() - gUser[playerid][u_chattime]) < 1000)
+		{
+		    SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Please don't flood in the chat.");
+		    return 0;
+		}
+	#endif
 
-	//anti spam
-	if(strlen(text) == strlen(gUser[playerid][u_chattext]) && ! strcmp(gUser[playerid][u_chattext], text,  false))
-	{
-	    SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Please don't spam in the chat.");
-		format(gUser[playerid][u_chattext][playerid], 144, "%s", text);
-  		return 0;
-	}
+	#if defined ANTI_SPAM
+		//anti spam
+		if(strlen(text) == strlen(gUser[playerid][u_chattext]) && ! strcmp(gUser[playerid][u_chattext], text,  false))
+		{
+		    SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Please don't spam in the chat.");
+			format(gUser[playerid][u_chattext][playerid], 144, "%s", text);
+	  		return 0;
+		}
+	#endif
 
 	//anti swear
 	new place;
@@ -3295,8 +3308,13 @@ public OnPlayerText(playerid, text[])
         }
     }
 
-	format(gUser[playerid][u_chattext], 144, "%s", text);
-    gUser[playerid][u_chattime] = GetTickCount();
+	#if defined ANTI_FLOOD
+    	gUser[playerid][u_chattime] = GetTickCount();
+	#endif
+
+	#if defined ANTI_SPAM
+		format(gUser[playerid][u_chattext], 144, "%s", text);
+	#endif
 	return 1;
 }
 
@@ -3439,8 +3457,8 @@ CMD:specoff(playerid, params[])
 		PlayerTextDrawHide(playerid, gUser[playerid][u_spectxt]);
 	#endif
 
+    gUser[playerid][u_spec] = false;
     gUser[playerid][u_specid] = INVALID_PLAYER_ID;
-    
     SetPlayerPos(playerid, gUser[playerid][u_pos][0], gUser[playerid][u_pos][1], gUser[playerid][u_pos][2]);
     SetPlayerInterior(playerid, gUser[playerid][u_int]);
     SetPlayerVirtualWorld(playerid, gUser[playerid][u_vw]);
@@ -7401,23 +7419,6 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			UpdatePlayerSpectating(playerid, 1, false);
 	    }
 	}
-    return 1;
-}
-
-//------------------------------------------------
-
-public OnPlayerInteriorChange(playerid, newinteriorid, oldinteriorid)
-{
-    LOOP_PLAYERS(i)
-    {
-        if(IsPlayerSpectating(i))
-        {
-            if(gUser[i][u_specid] == playerid)
-            {
-                SetPlayerInterior(i, newinteriorid);
-            }
-        }
-    }
     return 1;
 }
 
