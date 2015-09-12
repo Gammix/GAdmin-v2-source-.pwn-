@@ -9,7 +9,7 @@
      \ \___| || | | || |_||| |     | || || |  | |   \ \/ / / /_
 	  \______||_| |_|\____||_|     |_||_||_|  |_|    \__/ \____|
 
-	GAdmin System (gadmin.pwn) - Version 2.3
+	GAdmin System (gadmin.pwn) - Version 2.3.1
 	* Using easydb include, fast, easy and efficient SQLITE database for the admin system.
 	* Support timeban/tempban, permanent ban and now range bans as well.
 	* Over 100+ admin and player commands, watch the list in one dialog by typing /acmds in chat.
@@ -294,7 +294,6 @@ enum UserEnum
 
 	//spectate data
 	u_specid,
-	bool:u_spec,
 	Float:u_pos[3],
 	u_int,
 	#if defined SPECTATE_TEXTDRAW
@@ -774,7 +773,6 @@ SetPlayerSpectating(playerid, targetid)
     format(string, sizeof(string),"-> You are now spectating %s[%i].", ReturnPlayerName(targetid), targetid);
     SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
 
-    gUser[playerid][u_spec] = true;
     gUser[playerid][u_specid] = targetid;
 	return true;
 }
@@ -927,11 +925,16 @@ public OnPlayerTimeUpdate(playerid)
 {
 	new string[1024];
 
-	#if defined SPECTATE_TEXTDRAW
-	    if(gUser[playerid][u_spec])
-	    {
-	        if(IsPlayerConnected(gUser[playerid][u_specid]))
-	        {
+	if(IsPlayerSpectating(playerid))
+	{
+ 		if(IsPlayerConnected(gUser[playerid][u_specid]))
+   		{
+			if(GetPlayerVirtualWorld(playerid) != GetPlayerVirtualWorld(gUser[playerid][u_specid]))
+			{
+  				SetPlayerVirtualWorld(playerid, GetPlayerVirtualWorld(gUser[playerid][u_specid]));
+			}
+
+			#if defined SPECTATE_TEXTDRAW
 	            new target = gUser[playerid][u_specid];
 	            new arg_s[96], Float:arg_f, Float:arg_speed[3], arg_weaps[13][2];
 	            strcat(string, "~g~Username: ");
@@ -1075,9 +1078,9 @@ public OnPlayerTimeUpdate(playerid)
 	            strcat(string, "~g~You can use MMB (KEY_LOOK_BEHIND) or /specoff to stop spectating");
 
 				PlayerTextDrawSetString(playerid, gUser[playerid][u_spectxt], string);
-	        }
-	    }
-	#endif
+			#endif
+        }
+    }
 
 	if(gUser[playerid][u_lastreportedtime] > 0)
 	{
@@ -1207,7 +1210,6 @@ public OnPlayerConnect(playerid)
 	gUser[playerid][u_lastuser] = -1;
 
 	gUser[playerid][u_specid] = INVALID_PLAYER_ID;
-	gUser[playerid][u_spec] = false;
 	gUser[playerid][u_pos][0] = 0.0;
 	gUser[playerid][u_pos][1] = 0.0;
 	gUser[playerid][u_pos][2] = 0.0;
@@ -3437,8 +3439,8 @@ CMD:specoff(playerid, params[])
 		PlayerTextDrawHide(playerid, gUser[playerid][u_spectxt]);
 	#endif
 
-    gUser[playerid][u_spec] = false;
     gUser[playerid][u_specid] = INVALID_PLAYER_ID;
+    
     SetPlayerPos(playerid, gUser[playerid][u_pos][0], gUser[playerid][u_pos][1], gUser[playerid][u_pos][2]);
     SetPlayerInterior(playerid, gUser[playerid][u_int]);
     SetPlayerVirtualWorld(playerid, gUser[playerid][u_vw]);
@@ -7399,6 +7401,23 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 			UpdatePlayerSpectating(playerid, 1, false);
 	    }
 	}
+    return 1;
+}
+
+//------------------------------------------------
+
+public OnPlayerInteriorChange(playerid, newinteriorid, oldinteriorid)
+{
+    LOOP_PLAYERS(i)
+    {
+        if(IsPlayerSpectating(i))
+        {
+            if(gUser[i][u_specid] == playerid)
+            {
+                SetPlayerInterior(i, newinteriorid);
+            }
+        }
+    }
     return 1;
 }
 
