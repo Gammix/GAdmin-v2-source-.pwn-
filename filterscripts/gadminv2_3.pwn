@@ -9,7 +9,7 @@
      \ \___| || | | || |_||| |     | || || |  | |   \ \/ / / /_
 	  \______||_| |_|\____||_|     |_||_||_|  |_|    \__/ \____|
 
-	GAdmin System (gadmin.pwn) - Version 2.3.2
+	GAdmin System (gadmin.pwn) - Version 2.3.3
 	* Using easydb include, fast, easy and efficient SQLITE database for the admin system.
 	* Support timeban/tempban, permanent ban and now range bans as well.
 	* Over 100+ admin and player commands, watch the list in one dialog by typing /acmds in chat.
@@ -40,6 +40,7 @@
 #include <sscanf2> //Y_Less
 
 #include <easydb> //Gammix
+//#include <serversided> //Gammix
 
 #include <izcmd> //Zeex & Yashas
 
@@ -532,7 +533,7 @@ public OnFilterScriptInit()
 	{
 	    format(gReportlog[i], 145, "");
 	}
-	
+
 	for(new i; i < GetMaxPlayers(); i++)
 	{
 	    OnPlayerConnect(i);
@@ -553,7 +554,7 @@ public OnFilterScriptExit()
 	{
 	    OnPlayerDisconnect(i, 0);
 	}
-	
+
 	DB::Close();
 
 	//destroy server lock
@@ -1294,12 +1295,40 @@ public OnPlayerConnect(playerid)
 
 //------------------------------------------------
 
-GetPlayerConnectedTime(playerid, &hours, &minutes, &seconds)
+PlayerConnectedTime(playerid, &hours, &minutes, &seconds)
 {
 	new connected_time = NetStats_GetConnectedTime(playerid);
-	seconds = (connected_time / 1000) % 60;
-	minutes = (connected_time / (1000 * 60)) % 60;
-	hours = (connected_time / (1000 * 60 * 60));
+	new CurrentTime[3];
+	
+	CurrentTime[2] = (connected_time / 1000) % 60;
+	CurrentTime[1] = (connected_time / (1000 * 60)) % 60;
+	CurrentTime[0]= (connected_time / (1000 * 60 * 60));
+	
+	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(playerid));
+	new SavedTime[3];
+	if(key != DB::INVALID_KEY)
+	{
+		SavedTime[2] = DB::GetIntEntry(gGlobal[s_usertable], key, "seconds");
+		SavedTime[1] = DB::GetIntEntry(gGlobal[s_usertable], key, "minutes");
+		SavedTime[0] = DB::GetIntEntry(gGlobal[s_usertable], key, "hours");
+	}
+	
+	new TotalTime[3];
+	TotalTime[2] = CurrentTime[2] + SavedTime[2];
+	TotalTime[1] = CurrentTime[1] + SavedTime[1];
+	TotalTime[0] = CurrentTime[0] + SavedTime[0];
+	if (TotalTime[2] >= 60)
+	{
+	    TotalTime[2] = 0;
+	    TotalTime[1]++;
+	    
+	    if (TotalTime[1] >= 60)
+	    {
+	        TotalTime[1] = 0;
+	        TotalTime[2]++;
+	    }
+	}
+	
 	return true;
 }
 
@@ -1324,7 +1353,7 @@ public OnPlayerDisconnect(playerid, reason)
 	{
 		if(IsPlayerSpectating(i))
 		{
-		    if(gUser[i][u_specid] == playerid)
+		    if(gUser[i][u_spec] && gUser[i][u_specid] == playerid)
 		    {
 		        UpdatePlayerSpectating(playerid, 0, true);
 			}
@@ -1342,7 +1371,7 @@ public OnPlayerDisconnect(playerid, reason)
 			getdate(date[0], date[1], date[2]);
 			format(DATE, sizeof(DATE), "%i/%i/%i", date[2], date[1], date[0]);
 
-            GetPlayerConnectedTime(playerid, gUser[playerid][u_hours], gUser[playerid][u_minutes], gUser[playerid][u_seconds]);
+            PlayerConnectedTime(playerid, gUser[playerid][u_hours], gUser[playerid][u_minutes], gUser[playerid][u_seconds]);
 
 			DB::SetStringEntry(gGlobal[s_usertable], key, "laston", DATE);
 			DB::SetIntEntry(gGlobal[s_usertable], key, "kills", gUser[playerid][u_kills]);
@@ -1524,9 +1553,9 @@ public OnPlayerRequestClass(playerid, classid)
 	}
 
 	new bankey = DB::RetrieveKey(gGlobal[s_bantable], "ip", ReturnPlayerIP(playerid));
-	if(bankey != DB_INVALID_KEY)
+	if(bankey == DB_INVALID_KEY)
 	{
-	    bankey = DB::RetrieveKey(gGlobal[s_bantable], "ip", ReturnPlayerIP(playerid));
+	    bankey = DB::RetrieveKey(gGlobal[s_bantable], "name", ReturnPlayerName(playerid));
 	}
 
 	if(bankey != DB_INVALID_KEY)//if the player is banned
@@ -3383,14 +3412,14 @@ CMD:acmds(playerid, params[])
 		strcat(DIALOG, ""HOT_PINK"ADMIN LEVEL 2:\n");
   		strcat(DIALOG, ""SAMP_BLUE"/jetpack, /aweaps, /show, /muted, /jailed, /carhealth, /eject, /carpaint,\n");
   		strcat(DIALOG, ""SAMP_BLUE"/carcolor, /givecar, /car, /akill, /jail, /unjail, /mute, /unmute, /setskin,\n");
-  		strcat(DIALOG, ""SAMP_BLUE"/cc, /heal, /armour, /setinterior, /setworld, /explode, /disarm, /tune, /aka\n");
+  		strcat(DIALOG, ""SAMP_BLUE"/cc, /aheal, /aarmour, /setinterior, /setworld, /explode, /disarm, /tune, /aka\n");
   		strcat(DIALOG, ""SAMP_BLUE"/ban, /oban, /searchban, /searchipban, /searchrangeban, /unban, /atele, /ann2\n\n");
 	}
 	if(GetPlayerGAdminLevel(playerid) >= 3 || IsPlayerAdmin(playerid))
 	{
 		strcat(DIALOG, ""HOT_PINK"ADMIN LEVEL 3:\n");
 		strcat(DIALOG, ""SAMP_BLUE"/get, /write, /force, /healall, /armourall, /fightstyle, /sethealth, /setarmour, /destroycar,\n");
-		strcat(DIALOG, "/agod, /resetcash, /getall, /freeze, /unfreeze, /giveweapon, /slap, /setcolor, /setcash, /setscore,\n");
+		strcat(DIALOG, "/agod, /resetcash, /getall, /freeze, /unfreeze, /giveweapon, /slap, /setcolor, /setcash, /setscore, /osetpass\n");
 		strcat(DIALOG, "/givecash, /givescore, /respawncar, /setkills, /setdeaths, /banip, /unbanip, /freezeall, /unfreezeall\n\n");
 	}
 	if(GetPlayerGAdminLevel(playerid) >= 4 || IsPlayerAdmin(playerid))
@@ -4484,7 +4513,7 @@ CMD:cc(playerid, params[])
 	return 1;
 }
 
-CMD:heal(playerid, params[])
+CMD:aheal(playerid, params[])
 {
 	//check if the player is a admin
 	LevelCheck(playerid, 2);
@@ -4507,7 +4536,7 @@ CMD:heal(playerid, params[])
 	return 1;
 }
 
-CMD:armour(playerid, params[])
+CMD:aarmour(playerid, params[])
 {
 	//check if the player is a admin
 	LevelCheck(playerid, 2);
@@ -4742,6 +4771,7 @@ CMD:oban(playerid, params[])
 	{
 		if(GetPlayerGAdminLevel(playerid) < DB::GetIntEntry(gGlobal[s_usertable], key, "admin")) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin.");
 	}
+	else return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The username doesn't exist in the database.");
 
 	key = DB::RetrieveKey(gGlobal[s_bantable], "name", name);
 	if(key != DB_INVALID_KEY) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified user is already banned.");
@@ -4759,7 +4789,9 @@ CMD:oban(playerid, params[])
 
 	DB::CreateRow(gGlobal[s_bantable], "name", name);
 	new bankey = DB::RetrieveKey(gGlobal[s_bantable], "name", name);
-	DB::SetStringEntry(gGlobal[s_bantable], bankey, "ip", "");
+	new ip[18];
+	DB::GetStringEntry(gGlobal[s_usertable], DB::RetrieveKey(gGlobal[s_usertable], "username", name), "ip", ip);
+	DB::SetStringEntry(gGlobal[s_bantable], bankey, "ip", ip);
 	DB::SetStringEntry(gGlobal[s_bantable], bankey, "banby", ReturnPlayerName(playerid));
 	DB::SetStringEntry(gGlobal[s_bantable], bankey, "banon", bandate);
 	DB::SetStringEntry(gGlobal[s_bantable], bankey, "reason", reason);
@@ -6043,6 +6075,35 @@ CMD:unmuteall(playerid, params[])
 	return 1;
 }
 
+CMD:osetpass(playerid, params[])
+{
+	//check if the player is a admin
+	LevelCheck(playerid, 3);
+
+	new name[MAX_PLAYER_NAME], newpass[35];
+	if(sscanf(params, "s[24]s[35]", name, newpass)) return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /osetpass [username] [new password]");
+
+	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", name);
+	if(key != DB_INVALID_KEY)
+	{
+		if(GetPlayerGAdminLevel(playerid) < DB::GetIntEntry(gGlobal[s_usertable], key, "admin")) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You cannot use this command on higher level admin.");
+	}
+	else return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The username doesn't exist in the database.");
+
+	if(strlen(newpass) < 3 || strlen(newpass) > 35) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: Invalid password length, must be b/w 0-35 characters.");
+
+	new hash[65];
+	DB::Hash(hash, sizeof(hash), newpass);
+	DB::SetStringEntry(gGlobal[s_usertable], key, "password", hash);
+
+	new string[144];
+ 	format(string, sizeof(string), "* You have reseted the password of '%s [DBId: %i]' to '%s'.", name, key, newpass);
+	SendClientMessage(playerid, COLOR_DODGER_BLUE, string);
+	
+	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
+	return 1;
+}
+
 CMD:killall(playerid, params[])
 {
 	//check if the player is a admin
@@ -7088,16 +7149,13 @@ CMD:savestats(playerid, params[])
 {
 	if(GetPVarType(playerid, "GAdmin_Loggedin") == PLAYER_VARTYPE_NONE) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: You are not registered or logged in.");
 
-    GetPlayerConnectedTime(playerid, gUser[playerid][u_hours], gUser[playerid][u_minutes], gUser[playerid][u_seconds]);
+    PlayerConnectedTime(playerid, gUser[playerid][u_hours], gUser[playerid][u_minutes], gUser[playerid][u_seconds]);
 
 	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(playerid));
 	DB::SetIntEntry(gGlobal[s_usertable], key, "kills", gUser[playerid][u_kills]);
 	DB::SetIntEntry(gGlobal[s_usertable], key, "deaths", gUser[playerid][u_deaths]);
 	DB::SetIntEntry(gGlobal[s_usertable], key, "score", GetPlayerScore(playerid));
 	DB::SetIntEntry(gGlobal[s_usertable], key, "money", GetPlayerMoney(playerid));
-	DB::SetIntEntry(gGlobal[s_usertable], key, "hours", gUser[playerid][u_hours]);
-	DB::SetIntEntry(gGlobal[s_usertable], key, "minutes", gUser[playerid][u_minutes]);
-	DB::SetIntEntry(gGlobal[s_usertable], key, "seconds", gUser[playerid][u_seconds]);
 
 	SendClientMessage(playerid, COLOR_GREEN, "ACCOUNT: Your stats have been saved. (Your stats automatically saves after disconnect though)");
 	PlayerPlaySound(playerid, 1057, 0.0, 0.0, 0.0);
@@ -7115,7 +7173,10 @@ CMD:stats(playerid, params[])
 
 	if(! IsPlayerConnected(target)) return SendClientMessage(playerid, COLOR_FIREBRICK, "ERROR: The specified player is not conected.");
 
-    GetPlayerConnectedTime(target, gUser[target][u_hours], gUser[target][u_minutes], gUser[target][u_seconds]);
+	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(target));
+
+    PlayerConnectedTime(target, gUser[target][u_hours], gUser[target][u_minutes], gUser[target][u_seconds]);
+    
 	//Stats stuff !:D!
 	new DIALOG[676];
 	new string[156];
@@ -7134,7 +7195,7 @@ CMD:stats(playerid, params[])
 	//calculate Kill/Deaths ratio
 	new Float:ratio;
 	if(gUser[target][u_deaths] <= 0) ratio = 0.0;
-	else ratio = Float:(gUser[target][u_kills] / gUser[target][u_deaths]);
+	else ratio = floatdiv(gUser[target][u_kills], gUser[target][u_deaths]);
 	format(string, sizeof(string), ""SAMP_BLUE"K/D Ratio: "TOMATO"%0.2f\n", ratio);
 	strcat(DIALOG, string);
 	format(string, sizeof(string), ""SAMP_BLUE"Score: "TOMATO"%i\n", GetPlayerScore(target));
@@ -7149,7 +7210,6 @@ CMD:stats(playerid, params[])
 	format(string, sizeof(string), ""SAMP_BLUE"Registered: "TOMATO"%s\n", ((GetPVarType(playerid, "GAdmin_Loggedin") != PLAYER_VARTYPE_NONE) ? yes : no));
 	strcat(DIALOG, string);
 	//get user id
-	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(target));
 	new DATE[18];
 	//joined date
 	DB::GetStringEntry(gGlobal[s_usertable], key, "joindate", DATE);
@@ -7391,9 +7451,9 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 	{
 		if(IsPlayerSpectating(i))
 		{
-		    if(gUser[i][u_specid] == playerid)
+		    if(gUser[i][u_spec] && gUser[i][u_specid] == playerid)
 		    {
-		        UpdatePlayerSpectating(playerid, 0, false);
+		        UpdatePlayerSpectating(i, 0, false);
 			}
 		}
 	}
@@ -7404,7 +7464,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 {
-	if(IsPlayerGAdmin(playerid))
+	if(gUser[playerid][u_spec] && IsPlayerGAdmin(playerid))
  	{
 		if(newkeys == KEY_LOOK_BEHIND && IsPlayerSpectating(playerid))
 	    {
@@ -7426,11 +7486,13 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 
 public OnPlayerClickPlayer(playerid, clickedplayerid)
 {
-    GetPlayerConnectedTime(clickedplayerid, gUser[clickedplayerid][u_hours], gUser[clickedplayerid][u_minutes], gUser[clickedplayerid][u_seconds]);
+    PlayerConnectedTime(clickedplayerid, gUser[clickedplayerid][u_hours], gUser[clickedplayerid][u_minutes], gUser[clickedplayerid][u_seconds]);
 	//Stats stuff !:D!
 	new string[156];
 	format(string, sizeof(string), "You are now viewing %s's [id: %i] statics!", ReturnPlayerName(clickedplayerid), clickedplayerid);
 	SendClientMessage(playerid, COLOR_GREEN, string);
+
+	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(clickedplayerid));
 
 	new MESSAGE[676];
 	format(string, sizeof(string), "Kills: %i | ", gUser[clickedplayerid][u_kills]);
@@ -7446,7 +7508,7 @@ public OnPlayerClickPlayer(playerid, clickedplayerid)
 	//calculate Kill/Deaths ratio
 	new Float:ratio;
 	if(gUser[clickedplayerid][u_deaths] <= 0) ratio = 0.0;
-	else ratio = Float:(gUser[clickedplayerid][u_kills] / gUser[clickedplayerid][u_deaths]);
+	else ratio = floatdiv(gUser[clickedplayerid][u_kills], gUser[clickedplayerid][u_deaths]);
 	format(string, sizeof(string), "K/D Ratio: %0.2f | ", ratio);
 	strcat(MESSAGE, string);
 	format(string, sizeof(string), "Score: %i | ", GetPlayerScore(clickedplayerid));
@@ -7462,7 +7524,6 @@ public OnPlayerClickPlayer(playerid, clickedplayerid)
 	format(string, sizeof(string), "Registered: %s | ", ((GetPVarType(playerid, "GAdmin_Loggedin") != PLAYER_VARTYPE_NONE) ? yes : no));
 	strcat(MESSAGE, string);
 	//get user id
-	new key = DB::RetrieveKey(gGlobal[s_usertable], "username", ReturnPlayerName(clickedplayerid));
 	new DATE[18];
 	//joined date
 	DB::GetStringEntry(gGlobal[s_usertable], key, "joindate", DATE);
