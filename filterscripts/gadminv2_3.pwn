@@ -1313,19 +1313,18 @@ PlayerConnectedTime(playerid, &hours, &minutes, &seconds)
 		SavedTime[0] = DB::GetIntEntry(gGlobal[s_usertable], key, "hours");
 	}
 	
-	new TotalTime[3];
-	TotalTime[2] = CurrentTime[2] + SavedTime[2];
-	TotalTime[1] = CurrentTime[1] + SavedTime[1];
-	TotalTime[0] = CurrentTime[0] + SavedTime[0];
-	if (TotalTime[2] >= 60)
+	seconds = CurrentTime[2] + SavedTime[2];
+	minutes = CurrentTime[1] + SavedTime[1];
+	hours = CurrentTime[0] + SavedTime[0];
+	if (seconds >= 60)
 	{
-	    TotalTime[2] = 0;
-	    TotalTime[1]++;
+	    seconds = 0;
+	    minutes++;
 	    
-	    if (TotalTime[1] >= 60)
+	    if (minutes >= 60)
 	    {
-	        TotalTime[1] = 0;
-	        TotalTime[2]++;
+	        minutes = 0;
+	        hours++;
 	    }
 	}
 	
