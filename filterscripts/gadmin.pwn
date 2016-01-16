@@ -198,6 +198,7 @@ public OnFilterScriptInit()
 	new SQLRow:keys[1], values[1];
 	yoursql_sort_int(SQL:0, "users/ROW_ID", keys, values, .limit = 1);
 	printf("\t- Total user accounts: %i\n", _:keys[0]);
+	keys[0] = SQL_INVALID_ROW;
 	yoursql_sort_int(SQL:0, "bans/ROW_ID", keys, values, .limit = 1);
 	printf("\t- Total banned accounts: %i", _:keys[0]);
 	print("\n===============================================\n");
@@ -1094,14 +1095,16 @@ public OnPlayerText(playerid, text[])
 	{
 		format(buf, sizeof(buf), "Admin %s(%i): %s", ReturnPlayerName(playerid), playerid, text);
 		SendClientMessageToAll(GetPlayerColor(playerid), buf);
+		return 0;
 	}
 	else if (pStats[playerid][userPremium])
 	{
 		format(buf, sizeof(buf), ""CYAN"[VIP] {%06x}(%i) %s: "WHITE"%s", GetPlayerColor(playerid) >>> 8, playerid, ReturnPlayerName(playerid), text);
 		SendClientMessageToAll(GetPlayerColor(playerid), buf);
+		return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
@@ -1595,176 +1598,21 @@ public OnPlayerClickPlayer(playerid, clickedplayerid)
 	return 1;
 }
 
-CMD:sync(playerid)
-{
-	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
-	}
-
-	if (IsPlayerInAnyVehicle(playerid))
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
-	}
-
-    SyncPlayer(playerid);
-    SendClientMessage(playerid, COLOR_GREEN, "You have been synchronized upon your request (/stats restored)!");
-
-    return 1;
-}
-
-CMD:kill(playerid)
-{
-	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
-	}
-
-	if (IsPlayerInAnyVehicle(playerid))
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
-	}
-
-	SetPlayerHealth(playerid, 0.0);
-	SendClientMessage(playerid, COLOR_TOMATO, "You commited sucide.");
-
-	return 1;
-}
-
-CMD:givegun(playerid, params[])
-{
-	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
-	}
-
-	if (IsPlayerInAnyVehicle(playerid))
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
-	}
-
-	new target, amount;
-	if (sscanf(params, "ui", target, amount))
-	{
-		return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /givegun [player] [amount]");
-	}
-
-	if(amount < 1)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "The amount limit must be greater than 0.");
-	}
-
-	if (! IsPlayerConnected(target))
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not connected.");
-	}
-
-	if (target == playerid)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "You can't give money to yourself.");
-	}
-
-	if (GetPlayerState(target) == PLAYER_STATE_WASTED)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not spawned.");
-	}
-
-	new weapon = GetPlayerWeapon(playerid);
-	if (weapon == 0)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "You cannot distribute your wrist to players!");
-	}
-
-	new ammo = GetPlayerAmmo(playerid);
-	if (ammo < ammo)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "You yourself don't have that much ammo.");
-	}
-
-	SetPlayerAmmo(playerid, weapon, -ammo);
-	GivePlayerWeapon(target, weapon, ammo);
-
-	new weapon_name[35];
-	GetWeaponName(weapon, weapon_name, sizeof(weapon_name));
-
-	new buf[150];
-	format(buf, sizeof(buf), "You have recieved a %s with %i ammo from %s(%i).", weapon_name, amount, ReturnPlayerName(playerid), playerid);
-	SendClientMessage(target, COLOR_GREEN, buf);
-	format(buf, sizeof(buf), "You have given a %s with %i ammo to %s(%i).", weapon_name, amount, ReturnPlayerName(target), target);
-	SendClientMessage(playerid, COLOR_GREEN, buf);
-
-	return 1;
-}
-
-CMD:givemoney(playerid, params[])
-{
-	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
-	}
-
-	if (IsPlayerInAnyVehicle(playerid))
-	{
-	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
-	}
-
-	new target, amount;
-	if (sscanf(params, "ui", target, amount))
-	{
-		return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /givemoney [player] [amount]");
-	}
-
-	if(amount < 1)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "The amount limit must be greater than 0.");
-	}
-
-	if (! IsPlayerConnected(target))
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not connected.");
-	}
-
-	if (target == playerid)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "You can't give money to yourself.");
-	}
-
-	if (GetPlayerState(target) == PLAYER_STATE_WASTED)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not spawned.");
-	}
-
-	if (GetPlayerMoney(playerid) < amount)
-	{
-		return SendClientMessage(playerid, COLOR_TOMATO, "You yourself don't have that much money.");
-	}
-
-	GivePlayerMoney(playerid, -amount);
-	GivePlayerMoney(target, amount);
-
-	new buf[150];
-	format(buf, sizeof(buf), "You have recieved $%i from %s(%i).", amount, ReturnPlayerName(playerid), playerid);
-	SendClientMessage(target, COLOR_GREEN, buf);
-	format(buf, sizeof(buf), "You have given $%i to %s(%i).", amount, ReturnPlayerName(target), target);
-	SendClientMessage(playerid, COLOR_GREEN, buf);
-
-	return 1;
-}
-
 //Admin level 1+
 CMD:acmds(playerid, params[])
 {
-	if (! IsPlayerAdmin(playerid) && pStats[playerid][userAdmin] < 1)
-	{
-        return SendClientMessage(playerid, COLOR_TOMATO, "You must be an admin to use this command.");
-    }
-
 	new info[3024];
-	strcat(info, ""HOT_PINK"Moderator (Level 1):\n");
-  	strcat(info, ""WHITE"/acmds, /onduty, /offduty, /spec, /specoff, /adminarea, /weaps, /reports, /repair, /addnos,\n");
-  	strcat(info, "/warn, /resetwarns, /flip, /ip, /spawn, /goto, /setweather, /settime, /kick, /asay\n");
-  	strcat(info, "Use `"GREEN"!"WHITE"' for admin chat [eg. ! hello].\n\n");
+	strcat(info, ""DODGER_BLUE"Player:\n");
+	strcat(info, ""WHITE"/admins, /vips, /report, /changename, /changepass, /autologin, /nopm, /pm, /reply, /time, /id,\n");
+	strcat(info, "/stats, /richlist, /scorelist, /top10, /kill, /sync, /givegun, /givemoney\n\n");
 
+	if (pStats[playerid][userAdmin] >= 1 || IsPlayerAdmin(playerid))
+	{
+		strcat(info, ""HOT_PINK"Moderator (Level 1):\n");
+	  	strcat(info, ""WHITE"/acmds, /onduty, /offduty, /spec, /specoff, /adminarea, /weaps, /reports, /repair, /addnos,\n");
+	  	strcat(info, "/warn, /resetwarns, /flip, /ip, /spawn, /goto, /setweather, /settime, /kick, /asay\n");
+	  	strcat(info, "Use `"GREEN"!"WHITE"' for admin chat [eg. ! hello].\n\n");
+	}
 	if (pStats[playerid][userAdmin] >= 2 || IsPlayerAdmin(playerid))
 	{
 		strcat(info, ""HOT_PINK"Junior Administrator (Level 2):\n");
@@ -2024,7 +1872,7 @@ CMD:reports(playerid)
 	    }
 	}
 
-	ShowPlayerDialog(playerid, DIALOG_ID_REPORTS, DIALOG_STYLE_MSGBOX, "Reports log:", info, "Open", "Close");
+	ShowPlayerDialog(playerid, DIALOG_ID_REPORTS, DIALOG_STYLE_LIST, "Reports log:", info, "Open", "Close");
 	return 1;
 }
 
@@ -4652,7 +4500,7 @@ CMD:setcolor(playerid, params[])
 		return 1;
 	}
 
-	if (color > 9 || color > 0)
+	if (color > 9 || color < 0)
 	{
 		SendClientMessage(playerid, COLOR_TOMATO, "Invalid color id, must be b/w 0-9.");
 		SendClientMessage(playerid, COLOR_THISTLE, "COLOR: [0]Black, [1]White, [2]Red, [3]Orange, [4]Yellow, [5]Green, [6]Blue, [7]Purple, [8]Brown, [9]Pink");
@@ -5975,7 +5823,13 @@ CMD:admins(playerid)
 			        case 3: rank = "Senior Administrator";
 			        case 4: rank = "Lead Administrator";
 			        case 5: rank = "Server Manager";
-					default: rank = "Server Owner";
+					default:
+					{
+						if (pStats[i][userAdmin] <= MAX_ADMIN_LEVELS)
+						{
+							rank = "Server Owner";
+						}
+					}
 			    }
    			}
 
@@ -6335,7 +6189,17 @@ CMD:stats(playerid, params[])
 	        case 3: admin_rank = "Senior Administrator";
 	        case 4: admin_rank = "Lead Administrator";
 		    case 5: admin_rank = "Server Manager";
-			default: admin_rank = "Server Owner";
+			default:
+			{
+				if (pStats[targetid][userAdmin] <= MAX_ADMIN_LEVELS)
+				{
+					admin_rank = "Server Owner";
+				}
+				else
+				{
+				    admin_rank = "None";
+				}
+			}
 	    }
  	}
 
@@ -6424,5 +6288,161 @@ CMD:scorelist(playerid)
 CMD:top10(playerid)
 {
 	ShowPlayerDialog(playerid, DIALOG_ID_TOP10, DIALOG_STYLE_LIST, "Select a top10 category:", "Kills\nDeaths\nScore\nTime Played", "Select", "Cancel");
+	return 1;
+}
+
+CMD:sync(playerid)
+{
+	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
+	}
+
+	if (IsPlayerInAnyVehicle(playerid))
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
+	}
+
+    SyncPlayer(playerid);
+    SendClientMessage(playerid, COLOR_GREEN, "You have been synchronized upon your request (/stats restored)!");
+
+    return 1;
+}
+
+CMD:kill(playerid)
+{
+	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
+	}
+
+	if (IsPlayerInAnyVehicle(playerid))
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
+	}
+
+	SetPlayerHealth(playerid, 0.0);
+	SendClientMessage(playerid, COLOR_TOMATO, "You commited sucide.");
+
+	return 1;
+}
+
+CMD:givegun(playerid, params[])
+{
+	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
+	}
+
+	if (IsPlayerInAnyVehicle(playerid))
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
+	}
+
+	new target, amount;
+	if (sscanf(params, "ui", target, amount))
+	{
+		return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /givegun [player] [amount]");
+	}
+
+	if(amount < 1)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "The amount limit must be greater than 0.");
+	}
+
+	if (! IsPlayerConnected(target))
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not connected.");
+	}
+
+	if (target == playerid)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "You can't give money to yourself.");
+	}
+
+	if (GetPlayerState(target) == PLAYER_STATE_WASTED)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not spawned.");
+	}
+
+	new weapon = GetPlayerWeapon(playerid);
+	if (weapon == 0)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "You cannot distribute your wrist to players!");
+	}
+
+	new ammo = GetPlayerAmmo(playerid);
+	if (ammo < ammo)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "You yourself don't have that much ammo.");
+	}
+
+	SetPlayerAmmo(playerid, weapon, -ammo);
+	GivePlayerWeapon(target, weapon, ammo);
+
+	new weapon_name[35];
+	GetWeaponName(weapon, weapon_name, sizeof(weapon_name));
+
+	new buf[150];
+	format(buf, sizeof(buf), "You have recieved a %s with %i ammo from %s(%i).", weapon_name, amount, ReturnPlayerName(playerid), playerid);
+	SendClientMessage(target, COLOR_GREEN, buf);
+	format(buf, sizeof(buf), "You have given a %s with %i ammo to %s(%i).", weapon_name, amount, ReturnPlayerName(target), target);
+	SendClientMessage(playerid, COLOR_GREEN, buf);
+
+	return 1;
+}
+
+CMD:givemoney(playerid, params[])
+{
+	if (GetPlayerState(playerid) == PLAYER_STATE_SPECTATING)
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You cannot perform this command when spectating.");
+	}
+
+	if (IsPlayerInAnyVehicle(playerid))
+	{
+	    return SendClientMessage(playerid, COLOR_TOMATO, "You must be on foot to use this command.");
+	}
+
+	new target, amount;
+	if (sscanf(params, "ui", target, amount))
+	{
+		return SendClientMessage(playerid, COLOR_THISTLE, "USAGE: /givemoney [player] [amount]");
+	}
+
+	if(amount < 1)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "The amount limit must be greater than 0.");
+	}
+
+	if (! IsPlayerConnected(target))
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not connected.");
+	}
+
+	if (target == playerid)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "You can't give money to yourself.");
+	}
+
+	if (GetPlayerState(target) == PLAYER_STATE_WASTED)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "The specified player is not spawned.");
+	}
+
+	if (GetPlayerMoney(playerid) < amount)
+	{
+		return SendClientMessage(playerid, COLOR_TOMATO, "You yourself don't have that much money.");
+	}
+
+	GivePlayerMoney(playerid, -amount);
+	GivePlayerMoney(target, amount);
+
+	new buf[150];
+	format(buf, sizeof(buf), "You have recieved $%i from %s(%i).", amount, ReturnPlayerName(playerid), playerid);
+	SendClientMessage(target, COLOR_GREEN, buf);
+	format(buf, sizeof(buf), "You have given $%i to %s(%i).", amount, ReturnPlayerName(target), target);
+	SendClientMessage(playerid, COLOR_GREEN, buf);
+
 	return 1;
 }
